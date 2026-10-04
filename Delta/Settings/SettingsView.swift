@@ -37,7 +37,6 @@ struct SettingsView: View
                 ControlsSection()
                 EmulationSection()
                 OnlineMultiplayerSection()
-                DisplaySection()
                 MiscellaneousSection()
                 CreditsSection()
             }

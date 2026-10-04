@@ -681,13 +681,11 @@
 				TargetAttributes = {
 					BF8F2AAD1E9C879300F89F15 = {
 						CreatedOnToolsVersion = 8.3;
-						DevelopmentTeam = 6XVY5G3U44;
 						LastSwiftMigration = 1020;
 						ProvisioningStyle = Automatic;
 					};
 					BF8F2D551E9D8C2800F89F15 = {
 						CreatedOnToolsVersion = 8.3;
-						DevelopmentTeam = 6XVY5G3U44;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -830,6 +828,7 @@
 		BF8F2AB41E9C879300F89F15 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -896,6 +895,7 @@
 		BF8F2AB51E9C879300F89F15 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -958,7 +958,6 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "";
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 6XVY5G3U44;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -979,7 +978,6 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "";
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 6XVY5G3U44;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
@@ -996,7 +994,6 @@
 		BF8F2D5C1E9D8C2800F89F15 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEVELOPMENT_TEAM = 6XVY5G3U44;
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = Gambatte;
@@ -1008,7 +1005,6 @@
 		BF8F2D5D1E9D8C2800F89F15 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEVELOPMENT_TEAM = 6XVY5G3U44;
 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = Gambatte;

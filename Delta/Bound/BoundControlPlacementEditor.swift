@@ -10,6 +10,7 @@ final class BoundControlPlacementEditor: UIViewController {
     private let landscape: Bool
     private let store: BoundControlPlacementStore
     private let saved: () -> Void
+    private let storageIdentifier: String
     private var draft: BoundControlLayout
     private var selected: String?
     private var dragStart = CGPoint.zero
@@ -19,10 +20,11 @@ final class BoundControlPlacementEditor: UIViewController {
     private let sizeLabel = UILabel()
     private var controlViews: [String: UIView] = [:]
     private var items: [DeltaCore.ControllerSkin.Item] { (skin.items(for: traits) ?? []).filter { $0.kind == .button || $0.kind == .dPad } }
-    init(skin: ControllerSkinProtocol, traits: DeltaCore.ControllerSkin.Traits, canvasSize: CGSize, landscape: Bool, sourceFrame: CGRect? = nil,
+    init(skin: ControllerSkinProtocol, traits: DeltaCore.ControllerSkin.Traits, canvasSize: CGSize, landscape: Bool, sourceFrame: CGRect? = nil, storageIdentifier: String? = nil,
          store: BoundControlPlacementStore = .shared, saved: @escaping () -> Void) {
         self.skin = skin; self.traits = traits; canvas = canvasSize; self.sourceFrame = sourceFrame ?? CGRect(origin: .zero, size: canvasSize); self.landscape = landscape; self.store = store; self.saved = saved
-        draft = store.read(skin: skin.identifier, landscape: landscape)
+        self.storageIdentifier = storageIdentifier ?? skin.identifier
+        draft = store.read(skin: self.storageIdentifier, landscape: landscape)
         super.init(nibName: nil, bundle: nil)
         selected = items.first?.id
     }
@@ -114,6 +116,6 @@ final class BoundControlPlacementEditor: UIViewController {
     @objc private func cancel() { dismiss(animated: true) }
     @objc private func save() {
         guard view.window?.windowScene?.activationState == .foregroundActive else { return }
-        store.save(draft, skin: skin.identifier, landscape: landscape); saved(); dismiss(animated: true)
+        store.save(draft, skin: storageIdentifier, landscape: landscape); saved(); dismiss(animated: true)
     }
 }

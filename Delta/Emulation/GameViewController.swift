@@ -2798,13 +2798,15 @@ extension GameViewController {
         controllerLayoutBounds = layout.positions.isEmpty ? nil : view.bounds
         let minimal = BoundAppearancePreferences().theme == .minimal
         controllerLayoutSize = layout.positions.isEmpty && !minimal ? nil : nativeBoundControllerSize()
-        var proposed: ControllerSkinProtocol = layout.positions.isEmpty ? base : BoundPlacedControllerSkin(base: base, layout: layout, canvasSize: view.bounds.size, sourceFrame: nativeBoundControllerFrame(base: base))
+        let stock = BoundStockControllerSkin(base: base, canvasSize: nativeBoundControllerFrame(base: base).size, contentInsets: nativeBoundControllerInsets(base: base))
+        var proposed: ControllerSkinProtocol = layout.positions.isEmpty ? stock : BoundPlacedControllerSkin(base: stock, layout: layout, canvasSize: view.bounds.size, sourceFrame: nativeBoundControllerFrame(base: base))
         if minimal { proposed = BoundMinimalControllerSkin(base: proposed, canvasSize: layout.positions.isEmpty ? nativeBoundControllerFrame(base: base).size : view.bounds.size, traits: traitCollection) }
         if current.identifier != proposed.identifier { controllerView.cancelTouchInputs(); controllerView.controllerSkin = proposed }
     }
     private func unwrappedBoundControllerSkin(_ skin: ControllerSkinProtocol) -> ControllerSkinProtocol {
         if let placed = skin as? BoundPlacedControllerSkin { return unwrappedBoundControllerSkin(placed.base) }
         if let minimal = skin as? BoundMinimalControllerSkin { return unwrappedBoundControllerSkin(minimal.base) }
+        if let stock = skin as? BoundStockControllerSkin { return unwrappedBoundControllerSkin(stock.base) }
         return skin
     }
     private func nativeBoundControllerSize() -> CGSize {
@@ -2821,13 +2823,19 @@ extension GameViewController {
         }
         return AVMakeRect(aspectRatio: aspect, insideRect: bounds)
     }
+    private func nativeBoundControllerInsets(base: ControllerSkinProtocol) -> UIEdgeInsets {
+        let source = nativeBoundControllerFrame(base: base)
+        let visible = view.bounds.inset(by: view.safeAreaInsets).intersection(source)
+        guard !visible.isNull else { return .zero }
+        return UIEdgeInsets(top: max(0, visible.minY-source.minY), left: max(0, visible.minX-source.minX), bottom: max(0, source.maxY-visible.maxY), right: max(0, source.maxX-visible.maxX))
+    }
     func showBoundControlPlacement(from presenter: UIViewController? = nil) {
         let presenting = presenter ?? self
         guard presenting.presentedViewController == nil, let current = controllerView.controllerSkin,
               let traits = controllerView.controllerSkinTraits else { return }
         let base = unwrappedBoundControllerSkin(current)
         boundCompanion.cancelInteractions()
-        let editor = BoundControlPlacementEditor(skin: base, traits: traits, canvasSize: view.bounds.size, landscape: view.bounds.width > view.bounds.height, sourceFrame: nativeBoundControllerFrame(base: base), saved: { [weak self] in self?.applyBoundControlPlacement(); self?.view.setNeedsLayout() })
+        let editor = BoundControlPlacementEditor(skin: BoundStockControllerSkin(base: base, canvasSize: nativeBoundControllerFrame(base: base).size, contentInsets: nativeBoundControllerInsets(base: base)), traits: traits, canvasSize: view.bounds.size, landscape: view.bounds.width > view.bounds.height, sourceFrame: nativeBoundControllerFrame(base: base), storageIdentifier: base.identifier, saved: { [weak self] in self?.applyBoundControlPlacement(); self?.view.setNeedsLayout() })
         let navigation = UINavigationController(rootViewController: editor)
         navigation.modalPresentationStyle = .fullScreen
         presenting.present(navigation, animated: true)

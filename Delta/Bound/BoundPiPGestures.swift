@@ -10,7 +10,9 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
     private let magnified: (UIGestureRecognizer.State, CGFloat) -> Void
     private let opacityChanged: (UIGestureRecognizer.State, CGFloat) -> Void
     private var recognizers: [UIGestureRecognizer] = []
-    private var suppressCurrentPinch = false
+    private var moveTouchGate = BoundPiPTouchCountGate()
+    private var pinchTouchGate = BoundPiPTouchCountGate()
+    private var opacityTouchGate = BoundPiPTouchCountGate()
 
     init(view: UIView, shouldReceive: @escaping (UITouch) -> Bool,
          moved: @escaping (UIGestureRecognizer.State, CGSize, CGFloat) -> Void,
@@ -44,19 +46,27 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
         recognizers.removeAll(); view = nil
     }
     @objc private func move(_ gesture: UIPanGestureRecognizer) {
-        let movement = gesture.translation(in: view)
-        moved(gesture.state, CGSize(width: movement.x, height: movement.y), gesture.location(in: view).x)
+        switch moveTouchGate.update(phase: gesture.state, touches: gesture.numberOfTouches, required: 1) {
+        case .cancel: moved(.cancelled, .zero, gesture.location(in: view).x)
+        case .ignore: break
+        case .deliver:
+            let movement = gesture.translation(in: view)
+            moved(gesture.state, CGSize(width: movement.x, height: movement.y), gesture.location(in: view).x)
+        }
     }
     @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
-        if gesture.state == .began { suppressCurrentPinch = false }
-        if gesture.state == .began || gesture.state == .changed {
-            if gesture.numberOfTouches != 2 { suppressCurrentPinch = true; magnified(.cancelled, 1) }
+        switch pinchTouchGate.update(phase: gesture.state, touches: gesture.numberOfTouches, required: 2) {
+        case .cancel: magnified(.cancelled, 1)
+        case .ignore: break
+        case .deliver: magnified(gesture.state, gesture.scale)
         }
-        guard !suppressCurrentPinch else { return }
-        magnified(gesture.state, gesture.scale)
     }
     @objc private func opacity(_ gesture: UIPanGestureRecognizer) {
-        opacityChanged(gesture.state, gesture.translation(in: view).y)
+        switch opacityTouchGate.update(phase: gesture.state, touches: gesture.numberOfTouches, required: 3) {
+        case .cancel: opacityChanged(.cancelled, 0)
+        case .ignore: break
+        case .deliver: opacityChanged(gesture.state, gesture.translation(in: view).y)
+        }
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         shouldReceive(touch)
@@ -69,4 +79,19 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
+}
+
+/// UIKit touch-count limits govern recognition; they do not safely fence a gesture
+/// that changes fingers after recognition. Once mismatched, require a fresh gesture.
+struct BoundPiPTouchCountGate {
+    enum Decision: Equatable { case deliver, cancel, ignore }
+    private var suppressed = false
+    mutating func update(phase: UIGestureRecognizer.State, touches: Int, required: Int) -> Decision {
+        if phase == .began { suppressed = false }
+        if phase == .began || phase == .changed, touches != required {
+            guard !suppressed else { return .ignore }
+            suppressed = true; return .cancel
+        }
+        return suppressed ? .ignore : .deliver
+    }
 }

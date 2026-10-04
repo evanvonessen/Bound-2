@@ -1,51 +1,40 @@
 {
-  "fill" : {
-    "linear-gradient" : [
-      "display-p3:0.54510,0.15686,0.96863,1.00000",
-      "srgb:0.26667,0.00000,0.63137,1.00000"
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.961,0.945,0.988,1.000",
+      "srgb:0.961,0.945,0.988,1.000"
     ]
   },
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "image-name" : "delta_icon.svg",
-          "name" : "delta_icon",
-          "position" : {
-            "scale" : 0.88,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "glass" : false,
-          "image-name" : "delta_shadow.svg",
-          "name" : "delta_shadow",
-          "position" : {
-            "scale" : 0.88,
-            "translation-in-points" : [
+          "image-name": "BoundIcon.png",
+          "name": "Bound",
+          "glass": false,
+          "position": {
+            "scale": 1.0,
+            "translation-in-points": [
               0,
               0
             ]
           }
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": false,
+        "value": 0
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
+  "supported-platforms": {
+    "circles": [
       "watchOS"
     ],
-    "squares" : "shared"
+    "squares": "shared"
   }
 }

@@ -2,12 +2,12 @@ import Foundation
 
 enum BoundTheme: String, CaseIterable, Sendable {
     case delta, minimal
-    var title: String { self == .delta ? "Delta Default" : "Minimal" }
+    var title: String { self == .delta ? "Classic" : "Minimal" }
 }
 
 enum BoundScreenLayout: String, CaseIterable, Sendable {
     case delta, bound
-    var title: String { self == .delta ? "Delta Default" : "Bound" }
+    var title: String { self == .delta ? "Classic" : "Bound" }
 }
 
 struct BoundEmulationDetails: Equatable {

@@ -8,6 +8,7 @@ import DeltaCore
 final class BoundCompanionState: ObservableObject {
     @Published var selected = 0
     @Published var landscape = false
+    @Published var chartTopInset: CGFloat = 0
     @Published var hidden = false
     @Published var showingFriends = false
     @Published var showingSettings = false
@@ -45,11 +46,28 @@ private final class BoundOverlayView: UIView {
 
 @MainActor
 final class BoundCompanionCoordinator {
-    let sharing = FriendSharingSession(authenticatedMode: true)
+    let sharing: FriendSharingSession
+    #if DEBUG && targetEnvironment(simulator)
+    private let usesLocalPairedFixture: Bool
+    #endif
     let onboarding = FriendOnboarding()
     let account = BoundFriendAccount()
     let state: BoundCompanionState
-    init(state: BoundCompanionState? = nil) { self.state = state ?? BoundCompanionState() }
+    init(state: BoundCompanionState? = nil) {
+        self.state = state ?? BoundCompanionState()
+        #if DEBUG && targetEnvironment(simulator)
+        let environment = ProcessInfo.processInfo.environment
+        if ProcessInfo.processInfo.arguments.contains("--bound-ui-paired-transport"),
+           let peer = environment["BOUND_PAIR_PEER"], ["A", "B"].contains(peer),
+           let rawPort = environment["BOUND_PAIR_PORT"], let port = Int(rawPort), (1024...65535).contains(port) {
+            sharing = FriendSharingSession(configuration: .init(appID: String(repeating: "0", count: 32), channel: "localpair", uid: peer == "A" ? 1 : 2, remoteUID: peer == "A" ? 2 : 1, token: "offline-fixture-not-an-RTC-token"),
+                transport: BoundLocalPairedTransport(peer: peer, port: port), authenticatedMode: false)
+            usesLocalPairedFixture = true
+        } else { sharing = FriendSharingSession(authenticatedMode: true); usesLocalPairedFixture = false }
+        #else
+        sharing = FriendSharingSession(authenticatedMode: true)
+        #endif
+    }
     private var host: UIHostingController<BoundCompanionPanel>?
     private var controls: BoundCompanionCycleButton?
     private var subscriptions = Set<AnyCancellable>()
@@ -99,6 +117,8 @@ final class BoundCompanionCoordinator {
         })
         observers.append(NotificationCenter.default.addObserver(forName: BoundAppearancePreferences.didChangeNotification, object: nil, queue: .main) { [weak self, weak owner] _ in self?.cancelInteractions(); owner?.view.setNeedsLayout() })
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.background() })
+        // Restore foreground eligibility without automatically restarting authenticated sharing.
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in self?.foreground() })
         let panel = BoundCompanionPanel(sharing: sharing, state: state, gameID: (owner.game as? Game)?.identifier ?? "", editingChanged: { [weak self] in self?.notesEditing($0) })
         let host = UIHostingController(rootView: panel)
         // The coordinator already positions the overlay inside the game viewport.
@@ -157,6 +177,9 @@ final class BoundCompanionCoordinator {
         boundCore = core
         let previous = core.updateHandler, tap = self.tap
         core.updateHandler = { [weak tap] core in previous?(core); tap?.receive(core) }
+        #if DEBUG && targetEnvironment(simulator)
+        if usesLocalPairedFixture { sharing.start() }
+        #endif
     }
     func layout(in bounds: CGRect, safeArea: UIEdgeInsets, controllerSize: CGSize) -> CGRect? {
         guard let owner else { return nil }
@@ -194,6 +217,10 @@ final class BoundCompanionCoordinator {
             controllerSize: controllerSize, gameAspect: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2))
         overlay?.frame = geometry.friend
         if state.content != .friend { overlay?.frame = CGRect(x: bounds.minX, y: geometry.friend.minY, width: bounds.width, height: geometry.friend.height) }
+        if state.content == .types {
+            overlay?.frame = BoundTypeChartGeometry.portraitViewport(bounds: bounds, gameFrame: geometry.game)
+            if state.chartTopInset != safeArea.top { state.chartTopInset = safeArea.top }
+        }
         if isEditingNotes {
             overlay?.frame.size.height = max(geometry.friend.height, min(220, bounds.height - keyboardHeight - geometry.friend.minY - 8))
         }
@@ -244,14 +271,26 @@ final class BoundCompanionCoordinator {
             owner.gameViewController(owner, handleMenuInputFrom: owner.controllerView)
             return true
         }
-        owner.controllerView.accessibilityElements = [menuAccessibility]
+        var accessibleControls: [UIAccessibilityElement] = [menuAccessibility]
+        for input in ["l", "r"] {
+            guard let item = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == input }) }) else { continue }
+            let element = UIAccessibilityElement(accessibilityContainer: owner.controllerView)
+            element.accessibilityIdentifier = "bound.native-" + input
+            element.accessibilityLabel = input.uppercased() + " shoulder control"
+            element.accessibilityFrameInContainerSpace = item.frame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height))
+            accessibleControls.append(element)
+        }
+        owner.controllerView.accessibilityElements = accessibleControls
         nativeMenuAccessibility = menuAccessibility
         let controller = owner.controllerView.convert(owner.controllerView.bounds, to: owner.view)
         let occupied = owner.controllerView.controlHitFrames.map { owner.controllerView.convert($0, to: owner.view) }
         controls.isHidden = false
+        let right = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == "r" }) })
+        let rightFrame = right.map { owner.controllerView.convert($0.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view) }
+        let menuHitSize = menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)).size
         controls.configure(menuFrame: frame, controllerFrame: controller, landscape: state.landscape,
             minimal: BoundAppearancePreferences().theme == .minimal, content: state.content,
-            canvas: bounds.inset(by: safeArea), occupied: occupied)
+            canvas: bounds.inset(by: safeArea), occupied: occupied, rightShoulderFrame: rightFrame, menuHitSize: menuHitSize)
         owner.view.bringSubviewToFront(controls)
     }
     func presentFriends(from presenter: UIViewController) {
@@ -317,7 +356,12 @@ final class BoundCompanionCoordinator {
         state.refresh()
     }
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
-    func foreground() { sharing.foreground() }
+    func foreground() {
+        sharing.foreground()
+        #if DEBUG && targetEnvironment(simulator)
+        if usesLocalPairedFixture { sharing.start() }
+        #endif
+    }
     func background() { cancelInteractions(); tap.setEnabled(false); sharing.background() }
     func stop() {
         cancelInteractions(); tap.setEnabled(false); sharing.stop(); onboarding.close()
@@ -361,12 +405,14 @@ struct BoundCompanionPanel: View {
                 BoundNotesEditor(gameID: gameID, editingChanged: editingChanged).id(gameID)
             } else {
                 if state.landscape {
-                    ScrollView([.horizontal, .vertical]) {
-                        Image("PokemonTypeChart").resizable().scaledToFit().frame(width: 600).accessibilityLabel("Pokémon type effectiveness chart")
-                    }.accessibilityIdentifier("bound.type-chart")
-                } else { BoundTypeChartView() }
+                    Image("PokemonTypeChart").resizable().scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel("Pokémon type effectiveness chart")
+                        .accessibilityIdentifier("bound.type-chart")
+                } else { BoundTypeChartView(topInset: state.chartTopInset) }
             }
-        }.background(Color(uiColor: .secondarySystemBackground)).clipShape(RoundedRectangle(cornerRadius: state.landscape ? 8 : 4))
+        }.background(state.content == .types ? Color.black : Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: state.landscape ? 8 : state.content == .types ? 0 : 4))
         .onChange(of: sharing.joined) { _ in state.refresh() }
     }
 }
@@ -404,7 +450,7 @@ private struct BoundPiPSettings: View {
                     } else { Text("No emulation package is active.") }
                 }
                 Section("Picture in picture") {
-                    Text("In landscape, drag any panel with one finger to move it, pinch with two fingers to resize, or slide three fingers vertically to change opacity. Swipe to an edge to hide; tap the companion button to show the next panel. Delta portrait keeps these gestures for Friend and Notes; the portrait Types panel zooms and pans its chart content.")
+                    Text("In landscape, drag any panel with one finger to move it, pinch with two fingers to resize, or slide three fingers vertically to change opacity. Swipe to an edge to hide; tap the companion button to show the next panel. Classic portrait keeps these gestures for Friend and Notes; the portrait Types panel zooms and pans its chart content.")
                     ForEach(BoundPiPContent.allCases, id: \.rawValue) { content in
                         VStack(alignment: .leading) {
                             Text("\(content.rawValue.capitalized) transparency: \(Int(state.preferences.transparency(for: content) * 100))%")
@@ -413,8 +459,8 @@ private struct BoundPiPSettings: View {
                     }
                     Button("Show PiP") { state.hidden = false; state.refresh() }
                 }
-                Section("Delta controls") {
-                    Text("Delta's placement is the default. Customize positions separately for portrait and landscape, or reset to Delta.")
+                Section("Controls") {
+                    Text("Classic placement is the default. Customize positions separately for portrait and landscape, or reset to defaults.")
                 }
             }.navigationTitle("Bound Settings").toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Buttons") { state.pendingControlEditor = true; dismiss() }.accessibilityLabel("Button placement").accessibilityIdentifier("bound.button-placement") }
@@ -434,7 +480,7 @@ private struct BoundNotesEditor: View {
     let gameID: String
     let editingChanged: (Bool) -> Void
     @State private var text = ""
-    @State private var status = "Saved on this device"
+    @State private var status = ""
     @State private var readable = false
     @FocusState private var editing: Bool
     private let store = BoundNotesStore()
@@ -442,10 +488,12 @@ private struct BoundNotesEditor: View {
         VStack(alignment: .leading) {
             TextEditor(text: $text).focused($editing).disabled(!readable)
                 .accessibilityIdentifier("bound.notes-editor")
-            HStack {
-                Text(status).font(.caption)
-                Spacer()
-                if editing { Button("Done") { editing = false } }
+            if !status.isEmpty || editing {
+                HStack {
+                    if !status.isEmpty { Text(status).font(.caption) }
+                    Spacer()
+                    if editing { Button("Done") { editing = false } }
+                }
             }
         }
         .onAppear {
@@ -454,7 +502,7 @@ private struct BoundNotesEditor: View {
         }
         .onChange(of: text) { next in
             guard readable else { return }
-            do { try store.write(next, game: gameID); status = "Saved on this device" }
+            do { try store.write(next, game: gameID); status = "" }
             catch { status = "Could not save notes (16 KB limit)." }
         }
         .onChange(of: editing) { editingChanged($0) }

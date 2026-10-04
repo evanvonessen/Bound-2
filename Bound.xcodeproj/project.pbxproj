@@ -32,6 +32,12 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */ = {isa = PBXBuildFile; fileRef = 0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */; };
+		4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */ = {isa = PBXBuildFile; fileRef = 9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */; };
+		29764E0164684F3CAA391DBD /* COPYING in Resources */ = {isa = PBXBuildFile; fileRef = 084DC89EF78044B6A582A1A2 /* COPYING */; };
+		59CF946CE2E3410795B06A0E /* SourceAndLicenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD465FEC61E429CA4EAC9AB /* SourceAndLicenseTests.swift */; };
+		3608188E4C7E4163890CE9FE /* BoundSourceAndLicenses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F89619153040A1B064B58F /* BoundSourceAndLicenses.swift */; };
+		03452C62DFF4584B7406046D /* BoundStockControllerSkin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 264DD31E8EAE7DFDEF8DA6D5 /* BoundStockControllerSkin.swift */; };
 		061BD9D9D29F92EBDB48A354 /* AgoraSharingTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100D7B126A5A87377393E29C /* AgoraSharingTransport.swift */; };
 		074EAD7F7AE78C628F0977A8 /* PlaybackSharingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E519E2BAF174403DB37DB3A5 /* PlaybackSharingTests.swift */; };
 		086D5B30CBE1065AE9A6C9AA /* BoundPortraitScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D75D15A8F3B6F2793C7F56D /* BoundPortraitScreenGeometry.swift */; };
@@ -85,6 +91,7 @@
 		89DAEB1EDE294B3A7C857765 /* DeltaOperatorFacade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2157B527EA676AA703BEBF02 /* DeltaOperatorFacade.swift */; };
 		930F926748EAFE4DA261B958 /* GameCollectionViewController+Operator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D171C53E58A0B9BAF0B89D5 /* GameCollectionViewController+Operator.swift */; };
 		954A28F5338A5300C0B9497E /* OperatorSlotDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0654CFCA3D2CB4D35CC99F89 /* OperatorSlotDataSource.swift */; };
+		9B283F9811D6486EE48A70AE /* PairedFriendUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E6111EFD8DDDA68883CF9A3 /* PairedFriendUITests.swift */; };
 		9EE1E66A051751E201D09F44 /* BoundCompanionCycleButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F35BC570DB6B8BA023B9B53 /* BoundCompanionCycleButton.swift */; };
 		A5AAF6B64EA97D56F73A4A9D /* BoundFrameCaptureGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E875C2DEF127D860254648FA /* BoundFrameCaptureGate.swift */; };
 		A653079E9FDFF997EBF3E0EC /* CompanionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D615F5838D061A694CE0824 /* CompanionUITests.swift */; };
@@ -93,6 +100,7 @@
 		AC1C991029F8B8C30020E6E4 /* ToastNotificationOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1C990F29F8B8C30020E6E4 /* ToastNotificationOptions.swift */; };
 		AC1C992729F9F1CF0020E6E4 /* GameViewController+ExperimentalToasts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1C992629F9F1CF0020E6E4 /* GameViewController+ExperimentalToasts.swift */; };
 		ACF7E30F29F743A3000FE071 /* PHPhotoLibrary+Screenshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF7E30E29F743A3000FE071 /* PHPhotoLibrary+Screenshots.swift */; };
+		B40665E297A2096333F85419 /* BoundLocalPairedTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1DA5860DB2102986D2EDA19 /* BoundLocalPairedTransport.swift */; };
 		B8BF6056C00AB0507A06D39E /* OperatorStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C31F852121CBEF08181BD23 /* OperatorStatusView.swift */; };
 		BCA55C97BBA4BB6C8A87B282 /* DeltaCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF9F4FCE1AAD7B87004C9500 /* DeltaCore.framework */; };
 		BF00BEA625B758AA00C8607D /* SystemBIOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF00BEA525B758AA00C8607D /* SystemBIOS.swift */; };
@@ -236,6 +244,7 @@
 		CA0101012F8E000100000003 /* CheatIcons.plist in Resources */ = {isa = PBXBuildFile; fileRef = CA0101012F8E000100000001 /* CheatIcons.plist */; };
 		CA0101012F8E000100000005 /* CheatIconPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0101012F8E000100000004 /* CheatIconPickerView.swift */; };
 		CAA2B9A7326CF6197B22E796 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D4BE398ECEE1123609485EBD /* Foundation.framework */; };
+		D1CCDE2C67C0DCD2A3EF9645 /* StockControlAndGestureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104D04088215A199CB56949A /* StockControlAndGestureTests.swift */; };
 		D5002BD92DCD3E81003418FD /* IAPScareScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5002BD82DCD3E81003418FD /* IAPScareScreen.swift */; };
 		D5002BDA2DCD3E87003418FD /* IAPScareScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5002BD82DCD3E81003418FD /* IAPScareScreen.swift */; };
 		D5002BDC2DCD3ED2003418FD /* MockPurchaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5002BDB2DCD3ED2003418FD /* MockPurchaseManager.swift */; };
@@ -777,17 +786,25 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "DEPENDENCY-INVENTORY.md"; path = "LICENSES/DEPENDENCY-INVENTORY.md"; sourceTree = SOURCE_ROOT; };
+		9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "BOUND2-MODIFICATIONS.md"; path = "LICENSES/BOUND2-MODIFICATIONS.md"; sourceTree = SOURCE_ROOT; };
+		084DC89EF78044B6A582A1A2 /* COPYING */ = {isa = PBXFileReference; lastKnownFileType = text; name = "COPYING"; path = "COPYING"; sourceTree = SOURCE_ROOT; };
+		5DD465FEC61E429CA4EAC9AB /* SourceAndLicenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SourceAndLicenseTests.swift"; path = "PrototypeIntegrationTests/SourceAndLicenseTests.swift"; sourceTree = SOURCE_ROOT; };
+		87F89619153040A1B064B58F /* BoundSourceAndLicenses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BoundSourceAndLicenses.swift"; path = "Delta/Bound/BoundSourceAndLicenses.swift"; sourceTree = SOURCE_ROOT; };
 		0006FC7AB17F4EBEF25CB391 /* BoundAppearanceSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundAppearanceSkin.swift; sourceTree = "<group>"; };
 		0654CFCA3D2CB4D35CC99F89 /* OperatorSlotDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorSlotDataSource.swift; sourceTree = "<group>"; };
 		06F079A697C7C561C356F7E9 /* BoundDeltaFrameTap.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundDeltaFrameTap.swift; sourceTree = "<group>"; };
 		0B6FDC5A03AD5693BEFFE87C /* GamesViewController+Operator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GamesViewController+Operator.swift"; sourceTree = "<group>"; };
 		100D7B126A5A87377393E29C /* AgoraSharingTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgoraSharingTransport.swift; sourceTree = "<group>"; };
+		104D04088215A199CB56949A /* StockControlAndGestureTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StockControlAndGestureTests.swift; sourceTree = "<group>"; };
 		1610A5E4B1140888AA9EFF6F /* BoundFriendAccount.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundFriendAccount.swift; sourceTree = "<group>"; };
 		16CBEF16073EB51BA5AD5C81 /* BoundCompanionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoundCompanionUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E6111EFD8DDDA68883CF9A3 /* PairedFriendUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PairedFriendUITests.swift; sourceTree = "<group>"; };
 		1EAF49DF04CC61B325DAF2E0 /* TypeChartViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TypeChartViewTests.swift; sourceTree = "<group>"; };
 		1FDA069F523159F4233E8A90 /* BoundTypeChartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundTypeChartView.swift; sourceTree = "<group>"; };
 		2157B527EA676AA703BEBF02 /* DeltaOperatorFacade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeltaOperatorFacade.swift; sourceTree = "<group>"; };
 		22506DA00971C4300AF90A35 /* Pods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		264DD31E8EAE7DFDEF8DA6D5 /* BoundStockControllerSkin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundStockControllerSkin.swift; sourceTree = "<group>"; };
 		26C47EB2F43565AEDD44B055 /* FriendSharingTokens.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FriendSharingTokens.swift; sourceTree = "<group>"; };
 		35733EA11CCE9FF25284EFB8 /* AppearanceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceIntegrationTests.swift; sourceTree = "<group>"; };
 		4327597BCB33E196164D3BB6 /* DeltaOperatorGameObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeltaOperatorGameObserver.swift; sourceTree = "<group>"; };
@@ -827,6 +844,7 @@
 		9F35BC570DB6B8BA023B9B53 /* BoundCompanionCycleButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundCompanionCycleButton.swift; sourceTree = "<group>"; };
 		A01281C7023C0041B25963BE /* Pods-DeltaPreviews.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DeltaPreviews.debug.xcconfig"; path = "Pods/Target Support Files/Pods-DeltaPreviews/Pods-DeltaPreviews.debug.xcconfig"; sourceTree = "<group>"; };
 		A19FF50F55441BC2B2248241 /* Pods-Delta.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Delta.release.xcconfig"; path = "Pods/Target Support Files/Pods-Delta/Pods-Delta.release.xcconfig"; sourceTree = "<group>"; };
+		A1DA5860DB2102986D2EDA19 /* BoundLocalPairedTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundLocalPairedTransport.swift; sourceTree = "<group>"; };
 		A281E85E5D165A68EE1451DA /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Delta/Assets.xcassets; sourceTree = "<group>"; };
 		AC1C990F29F8B8C30020E6E4 /* ToastNotificationOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotificationOptions.swift; sourceTree = "<group>"; };
 		AC1C992629F9F1CF0020E6E4 /* GameViewController+ExperimentalToasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameViewController+ExperimentalToasts.swift"; sourceTree = "<group>"; };
@@ -1250,11 +1268,13 @@
 		1B24F7D2BD5CADF94443ECC1 /* PrototypeIntegrationTests */ = {
 			isa = PBXGroup;
 			children = (
+				5DD465FEC61E429CA4EAC9AB /* SourceAndLicenseTests.swift */,
 				E519E2BAF174403DB37DB3A5 /* PlaybackSharingTests.swift */,
 				35733EA11CCE9FF25284EFB8 /* AppearanceIntegrationTests.swift */,
 				E73281A93C2F67F4A56FA290 /* BoundDiagnostic.gba */,
 				1EAF49DF04CC61B325DAF2E0 /* TypeChartViewTests.swift */,
 				B8A586A10E1DB92A87DB45B1 /* CompanionCycleButtonTests.swift */,
+				104D04088215A199CB56949A /* StockControlAndGestureTests.swift */,
 			);
 			name = PrototypeIntegrationTests;
 			path = PrototypeIntegrationTests;
@@ -1264,6 +1284,7 @@
 			isa = PBXGroup;
 			children = (
 				7D615F5838D061A694CE0824 /* CompanionUITests.swift */,
+				1E6111EFD8DDDA68883CF9A3 /* PairedFriendUITests.swift */,
 			);
 			name = PrototypeUITests;
 			path = PrototypeUITests;
@@ -1290,6 +1311,10 @@
 		89CA897A2135209F65FDF629 /* Bound */ = {
 			isa = PBXGroup;
 			children = (
+				0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */,
+				9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */,
+				084DC89EF78044B6A582A1A2 /* COPYING */,
+				87F89619153040A1B064B58F /* BoundSourceAndLicenses.swift */,
 				100D7B126A5A87377393E29C /* AgoraSharingTransport.swift */,
 				1610A5E4B1140888AA9EFF6F /* BoundFriendAccount.swift */,
 				EAA7562AAABA52F743D74FFA /* BoundNotesStore.swift */,
@@ -1306,6 +1331,7 @@
 				DCAE7D666E24AD4015C010BC /* BoundAppearanceSettings.swift */,
 				700B4229FD43D2D7CC485768 /* BoundAppearancePreferences.swift */,
 				CDE48615FD1B95F2AA4C6B72 /* BoundControlPlacementSkin.swift */,
+				264DD31E8EAE7DFDEF8DA6D5 /* BoundStockControllerSkin.swift */,
 				852179CF8FCD1D6BB349E694 /* BoundControlPlacementEditor.swift */,
 				603F618C6D84AE0EE43FD052 /* BoundControlPlacement.swift */,
 				8469AA17D6924083971A9ECF /* BoundPiPGestures.swift */,
@@ -1316,6 +1342,7 @@
 				6D75D15A8F3B6F2793C7F56D /* BoundPortraitScreenGeometry.swift */,
 				4E86E365A35A807C50E45AAC /* BoundTypeChartGeometry.swift */,
 				1FDA069F523159F4233E8A90 /* BoundTypeChartView.swift */,
+				A1DA5860DB2102986D2EDA19 /* BoundLocalPairedTransport.swift */,
 			);
 			name = Bound;
 			path = Delta/Bound;
@@ -2465,12 +2492,10 @@
 					};
 					BF14D8941DE7A512002CA1BE = {
 						CreatedOnToolsVersion = 8.2;
-						DevelopmentTeam = 6XVY5G3U44;
 						ProvisioningStyle = Automatic;
 					};
 					BF6E70B925D2187800E41CD1 = {
 						CreatedOnToolsVersion = 12.5;
-						DevelopmentTeam = 6XVY5G3U44;
 						ProvisioningStyle = Automatic;
 					};
 					BFFA71D61AAC406100EE9DD1 = {
@@ -2801,6 +2826,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */,
+				4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */,
+				29764E0164684F3CAA391DBD /* COPYING in Resources */,
 				D53BE5FF2E873E6B0012DE0F /* MicrochipIcon.icon in Resources */,
 				D5D797E9298DCC7300738869 /* cheatbase.zip in Resources */,
 				BFFA71E21AAC406100EE9DD1 /* Main.storyboard in Resources */,
@@ -2987,10 +3015,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59CF946CE2E3410795B06A0E /* SourceAndLicenseTests.swift in Sources */,
 				074EAD7F7AE78C628F0977A8 /* PlaybackSharingTests.swift in Sources */,
 				273B677E21CFB932EFA82ACD /* AppearanceIntegrationTests.swift in Sources */,
 				3EC156C10490F4D05AACF9C7 /* TypeChartViewTests.swift in Sources */,
 				531059D8A4211817FB949969 /* CompanionCycleButtonTests.swift in Sources */,
+				D1CCDE2C67C0DCD2A3EF9645 /* StockControlAndGestureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2998,6 +3028,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3608188E4C7E4163890CE9FE /* BoundSourceAndLicenses.swift in Sources */,
 				BFB3645823245A6000CD0EB1 /* LicensesViewController.swift in Sources */,
 				BFC6F7B81F435BC500221B96 /* Input+Display.swift in Sources */,
 				D5AE76C82C2B808F0086471B /* AltAppIconsViewController.swift in Sources */,
@@ -3250,6 +3281,7 @@
 				0EF8EC59DD43C2CE2B8F47B2 /* BoundAppearanceSettings.swift in Sources */,
 				72FDE3D87998618604D197B4 /* BoundAppearancePreferences.swift in Sources */,
 				76AFFCD28B307ADBADFF7D46 /* BoundControlPlacementSkin.swift in Sources */,
+				03452C62DFF4584B7406046D /* BoundStockControllerSkin.swift in Sources */,
 				37DE7FC17EA1737BB1586114 /* BoundControlPlacementEditor.swift in Sources */,
 				EDD98AC09003D9F4EC39FA89 /* BoundControlPlacement.swift in Sources */,
 				A9D0C8D83FBEE28FB2158E9B /* BoundPiPGestures.swift in Sources */,
@@ -3260,6 +3292,7 @@
 				086D5B30CBE1065AE9A6C9AA /* BoundPortraitScreenGeometry.swift in Sources */,
 				404FAA10D564EC331C23C9E5 /* BoundTypeChartGeometry.swift in Sources */,
 				54452FAEF66D8BF787E73B28 /* BoundTypeChartView.swift in Sources */,
+				B40665E297A2096333F85419 /* BoundLocalPairedTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3268,6 +3301,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A653079E9FDFF997EBF3E0EC /* CompanionUITests.swift in Sources */,
+				9B283F9811D6486EE48A70AE /* PairedFriendUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3583,7 +3617,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 169;
+				CURRENT_PROJECT_VERSION = 170;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -3604,7 +3638,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
-				MARKETING_VERSION = 0.5.2;
+				MARKETING_VERSION = 0.5.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DGLES_SILENCE_DEPRECATION";
@@ -3645,7 +3679,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 169;
+				CURRENT_PROJECT_VERSION = 170;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -3660,7 +3694,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
-				MARKETING_VERSION = 0.5.2;
+				MARKETING_VERSION = 0.5.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_CFLAGS = "-DGLES_SILENCE_DEPRECATION";
 				OTHER_SWIFT_FLAGS = "-Xfrontend -debug-time-function-bodies";

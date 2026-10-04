@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 private func selectCompanion(_ name: String, in app: XCUIApplication) {
     let cycle = app.buttons["bound.panel-cycle"]
@@ -361,7 +362,7 @@ final class CompanionUITests: XCTestCase {
         XCTAssertEqual(friend.frame.width / friend.frame.height, 1.5, accuracy: 0.015)
         screenshot("Bound-Minimal-theme-landscape")
         selectCompanion("Types", in: app)
-        XCTAssertTrue(app.scrollViews["bound.type-chart"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.type-chart").firstMatch.waitForExistence(timeout: 5))
         selectCompanion("Notes", in: app)
         XCTAssertTrue(app.textViews["bound.notes-editor"].waitForExistence(timeout: 5))
         selectCompanion("Friend", in: app)
@@ -414,7 +415,7 @@ final class CompanionUITests: XCTestCase {
             abs(frame.width - expected.width) < 3 && abs(frame.height - expected.height) < 3
         }
         settings()
-        assertSelection("Delta Default")
+        assertSelection("Classic")
         closeBoundSheet(in: app)
         waitForFrame(game) { $0.width > 100 && $0.height > 100 && app.frame.height > app.frame.width }
         let nativePortrait = game.frame
@@ -472,7 +473,7 @@ final class CompanionUITests: XCTestCase {
         assertBackend("bound.emulation-engine-build", contains: "453fa0decf17")
         screenshot("Bound-active-GBA-backend-details")
         for _ in 0..<12 where !picker.exists || !picker.isHittable { app.collectionViews.firstMatch.swipeDown() }
-        chooseLayout("Delta Default")
+        chooseLayout("Classic")
         waitForFrame(game) { matches($0, nativePortrait) }
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForFrame(game) { matches($0, nativeLandscape) }
@@ -481,14 +482,14 @@ final class CompanionUITests: XCTestCase {
         _ = openGame(arguments: nativeArguments)
         waitForFrame(game) { matches($0, nativePortrait) }
         settings()
-        assertSelection("Delta Default")
+        assertSelection("Classic")
         chooseLayout("Bound")
         waitForFrame(game) { matches($0, boundPortrait) }
         settings()
         let reset = app.buttons["bound.reset-screen-layout"]
         XCTAssertTrue(reset.waitForExistence(timeout: 5))
         reset.tap()
-        assertSelection("Delta Default")
+        assertSelection("Classic")
         closeBoundSheet(in: app)
         waitForFrame(game) { matches($0, nativePortrait) }
         screenshot("Bound-reset-native-Delta-layout-portrait")
@@ -518,7 +519,7 @@ final class CompanionUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed], timeout: 5), .completed)
         XCTAssertTrue(matches(game.frame, nativePortrait))
         selectCompanion("Types", in: app)
-        XCTAssertTrue(app.scrollViews["bound.type-chart"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.type-chart").firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(matches(game.frame, nativePortrait))
         screenshot("Bound-native-portrait-type-chart")
         selectCompanion("Friend", in: app)
@@ -528,8 +529,12 @@ final class CompanionUITests: XCTestCase {
 
     func testPortraitTypeChartContentGesturesAndLandscapePanelGestures() throws {
         let app = openGame(arguments: ["--bound-ui-friend-fixture"])
+        selectCompanion("Friend", in: app)
+        let game = element("bound.game-screen", in: app)
+        let portraitGame = game.frame
+        let friendFrame = element("bound.friend-screen", in: app).frame
         selectCompanion("Types", in: app)
-        let chart = app.scrollViews["bound.type-chart"]
+        let chart = app.descendants(matching: .any).matching(identifier: "bound.type-chart").firstMatch
         let image = app.images["bound.type-chart-image"]
         XCTAssertTrue(chart.waitForExistence(timeout: 5))
         XCTAssertTrue(image.waitForExistence(timeout: 5))
@@ -543,11 +548,43 @@ final class CompanionUITests: XCTestCase {
         }
         let initial = metrics()
         let zoom = try XCTUnwrap(initial["zoom"])
-        XCTAssertEqual(try XCTUnwrap(initial["imageHeight"]), try XCTUnwrap(initial["viewportHeight"]), accuracy: 1)
+        XCTAssertEqual(try XCTUnwrap(initial["imageHeight"]), try XCTUnwrap(initial["fitViewportHeight"]), accuracy: 1)
+        XCTAssertEqual(try XCTUnwrap(initial["fitViewportHeight"]),
+                       try (XCTUnwrap(initial["viewportHeight"]) - XCTUnwrap(initial["topInset"])), accuracy: 1)
         XCTAssertEqual(zoom, try XCTUnwrap(initial["initial"]), accuracy: 0.001)
         let portraitPanelFrame = chart.frame
+        XCTAssertLessThanOrEqual(portraitPanelFrame.minY, 1)
+        XCTAssertGreaterThan(portraitPanelFrame.height, friendFrame.height)
+        XCTAssertEqual(portraitPanelFrame.maxY, portraitGame.minY, accuracy: 2)
+        XCTAssertEqual(try XCTUnwrap(initial["imageY"]), friendFrame.minY, accuracy: 2,
+                       "The initial chart header clears the safe area without shortening the viewport")
+        XCTAssertLessThanOrEqual(try (XCTUnwrap(initial["imageY"]) + XCTUnwrap(initial["imageHeight"])),
+                                 try XCTUnwrap(initial["viewportHeight"]) + 1,
+                                 "Both chart extremes must be visible before any pan or zoom")
+        XCTAssertEqual(game.frame, portraitGame)
+        XCTAssertEqual(game.frame.width, app.frame.width, accuracy: 2)
         screenshot("Bound-portrait-type-chart-height-fit")
-        chart.pinch(withScale: 2, velocity: 1)
+        let minimum = try XCTUnwrap(initial["minimum"])
+        chart.pinch(withScale: 0.1, velocity: -1)
+        let settledAtMinimum = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let current = metrics()["zoom"] else { return false }
+            return abs(current - minimum) < 0.001
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settledAtMinimum], timeout: 8), .completed,
+                       "Releasing a pinch below full-image fit must spring back to the minimum")
+        let fitted = metrics()
+        let fittedX = try XCTUnwrap(fitted["imageX"])
+        let fittedY = try XCTUnwrap(fitted["imageY"])
+        XCTAssertGreaterThanOrEqual(fittedX, -1)
+        XCTAssertGreaterThanOrEqual(fittedY, -1)
+        XCTAssertLessThanOrEqual(fittedX + (try XCTUnwrap(fitted["imageWidth"])),
+                                 try XCTUnwrap(fitted["viewportWidth"]) + 1)
+        XCTAssertLessThanOrEqual(fittedY + (try XCTUnwrap(fitted["imageHeight"])),
+                                 try XCTUnwrap(fitted["viewportHeight"]) + 1)
+        XCTAssertEqual(chart.frame, portraitPanelFrame)
+        XCTAssertEqual(game.frame, portraitGame)
+        screenshot("Bound-portrait-type-chart-full-image-minimum-after-elastic-pinch")
+        chart.pinch(withScale: CGFloat(zoom * 2 / minimum), velocity: 1)
         let zoomed = metrics()
         XCTAssertGreaterThan(try XCTUnwrap(zoomed["zoom"]), zoom * 1.2)
         XCTAssertEqual(chart.frame.width, portraitPanelFrame.width, accuracy: 2)
@@ -559,19 +596,35 @@ final class CompanionUITests: XCTestCase {
         XCTAssertNotEqual(try XCTUnwrap(metrics()["imageY"]), yBefore)
         screenshot("Bound-portrait-type-chart-content-zoomed-and-panned")
         XCUIDevice.shared.orientation = .landscapeLeft
-        let game = element("bound.game-screen", in: app)
         waitForFrame(game) { app.frame.width > app.frame.height && $0.height > app.frame.height * 0.8 }
         XCTAssertTrue(chart.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.scrollViews.matching(identifier: "bound.type-chart").firstMatch.exists,
+                       "Landscape fits the complete image and has no inner content scroller")
+        let landscapeGame = game.frame
         game.pinch(withScale: 0.5, velocity: -1)
         let smallPanelWidth = chart.frame.width
+        screenshot("Bound-landscape-full-chart-minimum-PiP")
         game.pinch(withScale: 1.2, velocity: 1)
         waitForFrame(chart) { $0.width > smallPanelWidth + 5 }
         screenshot("Bound-landscape-type-chart-whole-panel-resized")
+        game.pinch(withScale: 4, velocity: 1)
+        screenshot("Bound-landscape-full-chart-maximum-PiP")
+        let panelBeforeDrag = chart.frame
+        let oppositeCorner = CGVector(dx: panelBeforeDrag.midX < game.frame.midX ? 0.78 : 0.22,
+                                      dy: panelBeforeDrag.midY < game.frame.midY ? 0.78 : 0.22)
+        game.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: game.coordinate(withNormalizedOffset: oppositeCorner))
+        waitForFrame(chart) { abs($0.minX - panelBeforeDrag.minX) > 5 || abs($0.minY - panelBeforeDrag.minY) > 5 }
+        XCTAssertEqual(chart.frame.width, panelBeforeDrag.width, accuracy: 2)
+        XCTAssertEqual(chart.frame.height, panelBeforeDrag.height, accuracy: 2)
+        XCTAssertEqual(game.frame, landscapeGame)
+        XCTAssertFalse(app.buttons["Bound Settings"].exists)
+        screenshot("Bound-landscape-full-chart-whole-PiP-dragged")
         XCUIDevice.shared.orientation = .portrait
         XCTAssertTrue(image.waitForExistence(timeout: 5))
         let rotated = metrics()
         XCTAssertEqual(try XCTUnwrap(rotated["zoom"]), try XCTUnwrap(rotated["initial"]), accuracy: 0.001)
-        XCTAssertEqual(try XCTUnwrap(rotated["imageHeight"]), try XCTUnwrap(rotated["viewportHeight"]), accuracy: 1)
+        XCTAssertEqual(try XCTUnwrap(rotated["imageHeight"]), try XCTUnwrap(rotated["fitViewportHeight"]), accuracy: 1)
         app.terminate()
         _ = openGame(arguments: ["--bound-ui-friend-fixture"])
         selectCompanion("Types", in: app)
@@ -581,6 +634,52 @@ final class CompanionUITests: XCTestCase {
         screenshot("Bound-portrait-type-chart-reset-after-relaunch")
     }
 
+    func testLandscapeMenuAndCycleSitBelowTheirNativeShoulders() throws {
+        let app = openGame(arguments: ["--bound-ui-native-layout", "--bound-ui-friend-fixture"])
+        let game = element("bound.game-screen", in: app)
+        for layout in ["Classic", "Bound"] {
+            for theme in ["Classic", "Minimal"] {
+                XCUIDevice.shared.orientation = .portrait
+                openBoundSettings(in: app)
+                let arrangement = element("bound.screen-layout", in: app)
+                XCTAssertTrue(arrangement.waitForExistence(timeout: 5))
+                arrangement.tap()
+                app.buttons[layout].firstMatch.tap()
+                let appearance = element("bound.theme", in: app)
+                scrollToSetting(appearance, in: app)
+                appearance.tap()
+                app.buttons[theme].firstMatch.tap()
+                closeBoundSheet(in: app)
+                for (name, orientation) in [("left", UIDeviceOrientation.landscapeLeft), ("right", .landscapeRight)] {
+                    XCUIDevice.shared.orientation = orientation
+                    waitForFrame(game) { app.frame.width > app.frame.height && $0.width > $0.height }
+                    let left = element("bound.native-l", in: app)
+                    let right = element("bound.native-r", in: app)
+                    let menu = element("bound.native-menu", in: app)
+                    let cycle = app.buttons["bound.panel-cycle"]
+                    XCTAssertTrue(left.waitForExistence(timeout: 5))
+                    XCTAssertTrue(right.waitForExistence(timeout: 5))
+                    for input in [left, right, menu, cycle] {
+                        XCTAssertGreaterThan(input.frame.width, 0)
+                        XCTAssertGreaterThan(input.frame.height, 0)
+                        XCTAssertLessThan(input.frame.width, app.frame.width * 0.5,
+                                          "AX must describe actual controls rather than a screen container")
+                    }
+                    XCTAssertLessThan(menu.frame.midX, app.frame.midX)
+                    XCTAssertGreaterThan(cycle.frame.midX, app.frame.midX)
+                    XCTAssertGreaterThanOrEqual(menu.frame.minY, left.frame.maxY)
+                    XCTAssertGreaterThanOrEqual(cycle.frame.minY, right.frame.maxY)
+                    XCTAssertLessThan(abs(menu.frame.midX - left.frame.midX), left.frame.width)
+                    XCTAssertLessThan(abs(cycle.frame.midX - right.frame.midX), right.frame.width)
+                    XCTAssertFalse(menu.frame.intersects(cycle.frame))
+                    selectCompanion("Notes", in: app)
+                    XCTAssertFalse(app.buttons["Bound Settings"].exists)
+                    screenshot("Bound-shoulders-\(layout)-\(theme)-\(name)")
+                }
+            }
+        }
+    }
+
     func testPanelsAndNotesPersist() throws {
         let app = openGame()
         selectCompanion("Notes", in: app)
@@ -588,10 +687,12 @@ final class CompanionUITests: XCTestCase {
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         editor.tap()
         editor.typeText("QA companion note")
+        XCTAssertFalse(app.staticTexts["Saved on this device"].exists)
         screenshot("Bound-portrait-notes-keyboard")
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         XCTAssertTrue(app.keyboards.firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["Saved on this device"].exists)
         screenshot("Bound-landscape-notes-keyboard")
         XCUIDevice.shared.press(.home)
         app.activate()
@@ -601,9 +702,10 @@ final class CompanionUITests: XCTestCase {
         let done = app.buttons["Done"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
+        XCTAssertFalse(app.staticTexts["Saved on this device"].exists)
         resumeNativePause(in: app)
         selectCompanion("Types", in: app)
-        XCTAssertTrue(app.scrollViews["bound.type-chart"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.type-chart").firstMatch.waitForExistence(timeout: 5))
         screenshot("Bound-landscape-type-chart")
         selectCompanion("Friend", in: app)
         openNativePause(in: app)
@@ -644,7 +746,7 @@ final class FileImportUITests: XCTestCase {
         app.buttons["Browse"].firstMatch.tap()
         let local = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "On My iPhone")).firstMatch
         XCTAssertTrue(local.waitForExistence(timeout: 15)); local.tap()
-        let bound = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Bound 2")).firstMatch
+        let bound = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@", "Delta Bound", "Bound 2")).firstMatch
         XCTAssertTrue(bound.waitForExistence(timeout: 15)); bound.tap()
         let folder = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "PickerImportQA")).firstMatch
         XCTAssertTrue(folder.waitForExistence(timeout: 15)); folder.tap()
@@ -706,13 +808,23 @@ final class ReleaseSmokeUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Engine source"].exists)
         XCTAssertFalse(app.staticTexts["Package identifier"].exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "private testing prototype")).firstMatch.exists)
+        let source = app.buttons["bound.source-and-licenses-link"].firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10))
+        source.tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.source-version").firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.source-repository").firstMatch.exists)
+        let license = app.buttons["bound.license-agpl"].firstMatch
+        XCTAssertTrue(license.waitForExistence(timeout: 10)); license.tap()
+        XCTAssertTrue(app.staticTexts["bound.license-content"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons.firstMatch.tap()
         closeBoundSheet(in: app)
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(app.buttons["bound.panel-cycle"].exists)
         selectCompanion("Notes", in: app)
         XCTAssertTrue(app.textViews["bound.notes-editor"].waitForExistence(timeout: 10))
         selectCompanion("Types", in: app)
-        XCTAssertTrue(app.scrollViews["bound.type-chart"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "bound.type-chart").firstMatch.waitForExistence(timeout: 10))
         XCUIDevice.shared.orientation = .portrait
         #endif
     }

@@ -12,7 +12,7 @@ final class BoundCompanionCycleButton: UIButton {
     override init(frame: CGRect) {
         super.init(frame: frame)
         accessibilityIdentifier = "bound.panel-cycle"
-        accessibilityLabel = "Companion panel"
+        accessibilityLabel = "Bound companion panel"
         accessibilityHint = "Cycles Friend, Notes, and Types"
         addTarget(self, action: #selector(advance), for: .touchUpInside)
         backgroundColor = .clear
@@ -21,16 +21,17 @@ final class BoundCompanionCycleButton: UIButton {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     @objc private func advance() { cycle?() }
     func configure(menuFrame: CGRect, controllerFrame: CGRect, landscape: Bool, minimal: Bool,
-                   content: BoundPiPContent, canvas: CGRect, occupied: [CGRect]) {
+                   content: BoundPiPContent, canvas: CGRect, occupied: [CGRect], rightShoulderFrame: CGRect? = nil, menuHitSize: CGSize? = nil) {
         self.landscape = landscape; self.minimal = minimal; self.content = content
         visualSize = minimal ? CGSize(width: max(48, menuFrame.width), height: max(44, menuFrame.height)) : menuFrame.size
-        let hitSize = CGSize(width: max(44, visualSize.width), height: max(44, visualSize.height))
+        let hitSize = CGSize(width: max(44, max(visualSize.width, menuHitSize?.width ?? 0)), height: max(44, max(visualSize.height, menuHitSize?.height ?? 0)))
         let preferred: CGPoint
         if !landscape {
             preferred = CGPoint(x: controllerFrame.minX + controllerFrame.maxX - menuFrame.midX, y: menuFrame.midY)
+        } else if let right = rightShoulderFrame {
+            preferred = CGPoint(x: right.midX, y: right.maxY + hitSize.height / 2 + 10)
         } else {
-            // Keep native Menu fixed; the first choice is its adjacent right slot.
-            preferred = CGPoint(x: menuFrame.maxX + hitSize.width / 2 + 10, y: menuFrame.midY)
+            preferred = CGPoint(x: controllerFrame.minX + controllerFrame.maxX - menuFrame.midX, y: menuFrame.midY)
         }
         guard let available = Self.clearFrame(preferred: preferred, size: hitSize, canvas: canvas, occupied: occupied) else {
             // A pathological custom layout can fill the entire viewport. Do not
@@ -83,9 +84,10 @@ final class BoundCompanionCycleButton: UIButton {
         let shape = UIBezierPath(roundedRect: box, cornerRadius: min(box.width, box.height)/2)
         fill.setFill(); shape.fill()
         if landscape || minimal { UIColor.white.withAlphaComponent(minimal ? 0.25 : 0.85).setStroke(); shape.lineWidth = 1.5; shape.stroke() }
-        let symbol = content == .friend ? "person.2.fill" : content == .notes ? "note.text" : "square.grid.3x3.fill"
-        let image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: max(8, min(14, box.height*0.55)), weight: .semibold))?.withTintColor(ink, renderingMode: .alwaysOriginal)
-        if let image { image.draw(in: CGRect(x: box.midX-image.size.width/2, y: box.midY-image.size.height/2, width: image.size.width, height: image.size.height)) }
+        if let mark = UIImage(named: "DeltaBoundMark")?.withTintColor(ink, renderingMode: .alwaysOriginal) {
+            let side = min(box.width, box.height) * 0.72
+            mark.draw(in: CGRect(x: box.midX-side/2, y: box.midY-side/2, width: side, height: side))
+        }
     }
 }
 

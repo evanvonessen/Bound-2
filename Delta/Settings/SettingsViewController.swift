@@ -298,7 +298,7 @@ private extension SettingsViewController
         switch section
         {
         // This app uses Bound's friend service; upstream subscription/sync is inactive.
-        case .patreon, .syncing: return true
+        case .patreon, .syncing, .display: return true
         #if !DEBUG
         case .advanced: return true
         #endif
