@@ -3,7 +3,7 @@ import SwiftUI
 /// Source access and included notices are distinct from public distribution readiness.
 enum BoundSourceNotices {
     static let availability = "Bound 2 source, build instructions, and modification notices are available in its source repository."
-    static let sourceRepository = URL(string: "https://github.com/evanvonessen/Bound-2")!
+    static let sourceRepository = URL(string: "https://github.com/evanvonessen/bound")!
     static func version(in bundle: Bundle = .main) -> String {
         let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
         let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"

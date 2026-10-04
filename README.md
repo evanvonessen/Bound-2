@@ -7,8 +7,8 @@ A Delta-based Bound development app with friend video, notes and a type chart. T
 Prerequisites: Xcode (validated with Xcode 27), iOS 17+, and your existing Apple signing team.
 
 ```sh
-git clone https://github.com/evanvonessen/Bound-2.git
-cd Bound-2
+git clone https://github.com/evanvonessen/bound.git
+cd bound
 open Bound.xcodeproj
 ```
 
@@ -25,8 +25,8 @@ Friends uses the existing Bound backend and Agora adapter. No new account or ser
 If your checkout predates commit `03c3cc9`, its dependency submodules can conflict with the new tracked source snapshots during `git pull`. Keep that checkout and any edits intact, and clone alongside it instead:
 
 ```sh
-git clone https://github.com/evanvonessen/Bound-2.git Bound-2-clean
-open Bound-2-clean/Bound.xcodeproj
+git clone https://github.com/evanvonessen/bound.git bound-clean
+open bound-clean/Bound.xcodeproj
 ```
 
 Do not reset or delete the older checkout to resolve this transition. Fresh clones and checkouts already using tracked snapshots can pull normally.

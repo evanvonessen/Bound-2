@@ -128,7 +128,7 @@ The snapshots contain reviewed local compatibility changes; they are not claimed
 
 ## Release status
 
-The user made [the Bound 2 source repository](https://github.com/evanvonessen/Bound-2) public; its public status was verified on 2026-10-04. Public access to the tracked build sources is now available. This inventory describes the current working tree; modifications still awaiting publication must not be claimed to match an already downloadable binary until their exact release commit/version is verified. Public repository access does not establish full corresponding-source completeness, proprietary SDK rights or public/App Store clearance. See `COMPLIANCE-READINESS.md` for release matching and the remaining permission/source gates.
+The user made [the Bound 2 source repository](https://github.com/evanvonessen/bound) public; its public status was verified on 2026-10-04. Public access to the tracked build sources is now available. This inventory describes the current working tree; modifications still awaiting publication must not be claimed to match an already downloadable binary until their exact release commit/version is verified. Public repository access does not establish full corresponding-source completeness, proprietary SDK rights or public/App Store clearance. See `COMPLIANCE-READINESS.md` for release matching and the remaining permission/source gates.
 
 ## Additional 2026-10-04 audit observations
 

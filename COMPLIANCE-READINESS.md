@@ -1,6 +1,6 @@
 # Bound 2 source and distribution readiness
 
-This document records work still needed for a release; it is not legal certification, a license grant or a source offer. The user made https://github.com/evanvonessen/Bound-2 public; read-only verification confirmed that status on 2026-10-04. This work does not change repository visibility. Root COPYING and original dependency notices are preserved. Read LICENSES/DEPENDENCY-INVENTORY.md for the exact versions/files inspected, and LICENSES/BOUND2-MODIFICATIONS.md for the modification notice.
+This document records work still needed for a release; it is not legal certification, a license grant or a source offer. The user made https://github.com/evanvonessen/bound public; read-only verification confirmed that status on 2026-10-04. This work does not change repository visibility. Root COPYING and original dependency notices are preserved. Read LICENSES/DEPENDENCY-INVENTORY.md for the exact versions/files inspected, and LICENSES/BOUND2-MODIFICATIONS.md for the modification notice.
 
 ## Build the current tracked source
 
@@ -17,7 +17,7 @@ Before distributing a binary, identify the exact release commit, version/build, 
 The public repository provides access to tracked build sources and inputs, but source/binary version matching still needs verification for each release. The working tree under review is intended for 0.5.5 (172); do not claim it matches a released artifact until the exact commit is published and linked with that artifact's digest. Record that mapping in the release notes and artifact metadata. Recipients can then clone the repository and check out the recorded commit:
 
 ```sh
-git clone https://github.com/evanvonessen/Bound-2.git
+git clone https://github.com/evanvonessen/bound.git
 cd Bound-2
 git checkout <exact-commit-recorded-with-the-downloaded-release>
 open Bound.xcodeproj
