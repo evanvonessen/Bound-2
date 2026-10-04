@@ -1,0 +1,21 @@
+//
+//  SNESCoreSettingsView.swift
+//  Delta
+//
+//  Created by Caroline Moore on 8/18/25.
+//  Copyright © 2025 Riley Testut. All rights reserved.
+//
+
+import SwiftUI
+
+struct SNESCoreSettingsView: CoreSettingsView
+{
+    var system: System { .snes }
+    @Environment(\.openURL) var openURL
+}
+
+#Preview {
+    NavigationView {
+        SNESCoreSettingsView()
+    }
+}

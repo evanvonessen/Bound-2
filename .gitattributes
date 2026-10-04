@@ -1,0 +1,3 @@
+
+# Recorded patches preserve exact upstream whitespace in context lines.
+PrototypePatches/*.patch -whitespace

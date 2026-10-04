@@ -1,0 +1,88 @@
+//
+//  ExperimentalFeatures.swift
+//  Delta
+//
+//  Created by Riley Testut on 4/6/23.
+//  Copyright © 2023 Riley Testut. All rights reserved.
+//
+
+import DeltaFeatures
+
+struct ExperimentalFeatures: FeatureContainer
+{
+    static let shared = ExperimentalFeatures()
+    
+    @Feature(name: "AirPlay Skins",
+             description: "Customize the appearance of games when AirPlaying to your TV.")
+    var airPlaySkins
+    
+    @Feature(name: "Show Status Bar",
+             description: "Enable to show the Status Bar during gameplay.")
+    var showStatusBar
+    
+    @Feature(name: "Toast Notifications",
+             description: "Show toast notifications as a confirmation for various actions, such as saving your game or loading a save state.",
+             options: ToastNotificationOptions())
+    var toastNotifications
+    
+    @Feature(name: "Review Save States",
+             description: "Review recent Save States to make sure they are associated with the correct game.",
+             options: ReviewSaveStatesOptions())
+    var reviewSaveStates
+    
+    @Feature(name: "Repair Database",
+             description: "Repair invalid relationships in Delta's game database on next app launch.")
+    var repairDatabase
+    
+    @Feature(name: "Skin Debugging",
+             description: "Enable features useful for mapping controller skins.",
+             options: SkinDebuggingOptions())
+    var skinDebugging
+    
+    @Feature(name: "Reverse Controller Skin Screens",
+             description: "Dynamically reverse the order of screen inputFrames in controller skins. Can be used to “flip” between DS screens.")
+    var reverseScreens
+    
+    @Feature(name: "Show Touches",
+             description: "Visually show touches. Useful for screen recordings and tutorials.")
+    var showTouches
+    
+    @Feature(name: "Metal Renderer",
+             description: "Use Metal to render games instead of OpenGL ES. Does not apply to N64 games.")
+    var metal
+    
+    @Feature(name: "Lu",
+             description: "Ask Lu questions about your games to receive helpful tips, strategies, and interesting facts tailored to the games you're playing.",
+             detailedDescription: """
+             Lu learns from your questions and preferences to provide personalized advice. We do not collect personal information, but we do collect data to maintain and improve our experience. See our Privacy Statement and Terms of Service below for more information.
+             
+             https://www.lulabs.ai/legal
+             
+             If you have any questions about Lu, feel free to ask us in our Discord Server!
+             
+             https://discord.gg/XvSysJpQrn
+             """,
+             options: PlayWithLuOptions())
+    var Lu
+    
+    @Feature(name: "Show What’s New",
+             description: "Enable this to show What’s New on next launch.")
+    var showWhatsNew
+    
+    @Feature(name: "Delta Screenshots Album",
+             description: "Save game screenshots to dedicated “Delta Screenshots” album.")
+    var screenshotsAlbum
+    
+    @Feature(name: "Epilogue Operator",
+             description: "Enable support for Epilogue Operator devices to play games directly from cartridges. Requires an app restart to take effect.")
+    var operatorDevice
+
+    @Feature(name: "Library Export",
+             description: "Allow other apps to fetch your game library via the “delta://gameInfo?scheme=<callerScheme>” URL request. Delta responds by opening “<callerScheme>://delta?games=<payload>”, where the payload is a base64url-encoded JSON array of your games.")
+    var libraryExport
+
+    private init()
+    {
+        self.prepareFeatures()
+    }
+}

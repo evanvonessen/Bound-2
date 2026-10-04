@@ -1,0 +1,15 @@
+{
+  "Cores/DeltaCore": "633dfa86967816315fe19b482511dab1ce517f28",
+  "Cores/GBADeltaCore": "869c34aeca9dd2b3fbd329092bb2743b0ae80c98",
+  "Cores/GBCDeltaCore": "0871ccaad2bbd7cbd2de0ce06f9e26dc3d1bfdde",
+  "Cores/GPGXDeltaCore": "4af2ff5d68cffd12121b63157ffb79267573bfcc",
+  "Cores/MelonDSDeltaCore": "eb9b07ec17307cfd4986cb607f8ee5f6492d73cb",
+  "Cores/N64DeltaCore": "56aefef59d947edbf2eb34b0a0288d751b006f30",
+  "Cores/NESDeltaCore": "c88ef1e7c68ad723194d1b691362ac7d7394f968",
+  "Cores/SNESDeltaCore": "35add3af36e6c42d777c554a277e098766a78995",
+  "External/CheatBase": "df52576e6fd1185747f41b022d9664ad0593608a",
+  "External/DeltaOperator": "1fe5f5f2304c2440c18f74274eac5f69624d7aaf",
+  "External/Harmony": "c7b68f6e9d33173e28124b0c8ca90bd5009ef938",
+  "External/Roxas": "d07c467b6f65cbd08ba296d630986efafb830f95",
+  "Vendor/RevenueCat": "3dd291434fd63594b8ada87bca960e001b708241"
+}

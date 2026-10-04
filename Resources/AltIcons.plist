@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>modern</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>Delta</string>
+			<key>imageName</key>
+			<string>ModernIcon</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Photo Editor</string>
+			<key>imageName</key>
+			<string>DeltaRed</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBA4iOS</string>
+			<key>imageName</key>
+			<string>GBA4iOS</string>
+		</dict>
+	</array>
+	<key>glass</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>Default</string>
+			<key>imageName</key>
+			<string>AppIcon</string>
+		</dict>
+	</array>
+	<key>classic</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>Broken</string>
+			<key>imageName</key>
+			<string>BrokenIcon</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Original</string>
+			<key>imageName</key>
+			<string>OriginalIcon</string>
+		</dict>
+	</array>
+	<key>patrons</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>Delta Gold</string>
+			<key>imageName</key>
+			<string>DeltaGold</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Halogenide</string>
+			<key>imageName</key>
+			<string>Halogenide</string>
+			<key>credit</key>
+			<string>Sebastiaan de With (Halide)</string>
+			<key>url</key>
+			<string>https://halide.cam</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Ketchup</string>
+			<key>imageName</key>
+			<string>KetchupIcon</string>
+			<key>credit</key>
+			<string>Ben McCarthy</string>
+			<key>url</key>
+			<string>https://benricemccarthy.com/</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Microchip</string>
+			<key>imageName</key>
+			<string>MicrochipIcon</string>
+			<key>credit</key>
+			<string>Sean Fletcher</string>
+			<key>url</key>
+			<string>https://www.threads.net/@seanfletchr</string>
+		</dict>
+	</array>
+	<key>patronsButtonPack</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>NES</string>
+			<key>imageName</key>
+			<string>NESIcon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>SNES</string>
+			<key>imageName</key>
+			<string>SNESIcon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>N64</string>
+			<key>imageName</key>
+			<string>N64Icon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBC</string>
+			<key>imageName</key>
+			<string>GBCIcon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBC (Dandelion)</string>
+			<key>imageName</key>
+			<string>GBCIcon_Dandelion</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBC (Berry)</string>
+			<key>imageName</key>
+			<string>GBCIcon_Berry</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBC (Teal)</string>
+			<key>imageName</key>
+			<string>GBCIcon_Teal</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBC (Kiwi)</string>
+			<key>imageName</key>
+			<string>GBCIcon_Kiwi</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Game Boy</string>
+			<key>imageName</key>
+			<string>GBIcon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>GBA</string>
+			<key>imageName</key>
+			<string>GBAIcon</string>
+			<key>credit</key>
+			<string>Louie Mantia</string>
+			<key>url</key>
+			<string>https://lmnt.me</string>
+		</dict>
+	</array>
+</dict>
+</plist>

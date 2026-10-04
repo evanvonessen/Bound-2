@@ -1,0 +1,35 @@
+diff --git a/conffile.cpp b/conffile.cpp
+index 1e20f0d3..04ae5749 100644
+--- a/conffile.cpp
++++ b/conffile.cpp
+@@ -638,7 +638,7 @@ void ConfigFile::ClearLines()
+     }
+ }
+ 
+-bool ConfigFile::ConfigEntry::section_then_key_less::operator()(const ConfigEntry &a, const ConfigEntry &b) {
++bool ConfigFile::ConfigEntry::section_then_key_less::operator()(const ConfigEntry &a, const ConfigEntry &b) const {
+ 	if(curConfigFile && a.section!=b.section){
+ 		const int sva = curConfigFile->GetSectionSize(a.section);
+ 		const int svb = curConfigFile->GetSectionSize(b.section);
+diff --git a/conffile.h b/conffile.h
+index bc383a53..0970f54e 100644
+--- a/conffile.h
++++ b/conffile.h
+@@ -276,7 +276,7 @@ class ConfigFile {
+ 		mutable bool used;
+ 
+         struct section_then_key_less {
+-            bool operator()(const ConfigEntry &a, const ConfigEntry &b);
++            bool operator()(const ConfigEntry &a, const ConfigEntry &b) const;
+         };
+ 
+         struct key_less {
+@@ -287,7 +287,7 @@ class ConfigFile {
+         };
+ 
+         struct line_less {
+-            bool operator()(const ConfigEntry &a, const ConfigEntry &b){
++            bool operator()(const ConfigEntry &a, const ConfigEntry &b) const{
+ 				if(a.line==b.line) return (b.val.empty() && !a.val.empty()) || a.key<b.key;
+                 if(b.line<0) return true;
+                 if(a.line<0) return false;

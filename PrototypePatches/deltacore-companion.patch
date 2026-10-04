@@ -1,0 +1,309 @@
+diff --git a/DeltaCore/Emulator Core/EmulatorCore.swift b/DeltaCore/Emulator Core/EmulatorCore.swift
+index 6b5cb2f..c379ddc 100644
+--- a/DeltaCore/Emulator Core/EmulatorCore.swift	
++++ b/DeltaCore/Emulator Core/EmulatorCore.swift	
+@@ -134,9 +134,8 @@ public extension EmulatorCore
+ {
+     @discardableResult func start() -> Bool
+     {
+-        guard self._state == .stopped else { return false }
+-        
+         self.emulationLock.lock()
++        guard self._state == .stopped else { self.emulationLock.unlock(); return false }
+         
+         self._state = .running
+         defer { self.state = self._state }
+@@ -151,8 +150,7 @@ public extension EmulatorCore
+         self.deltaCore.emulatorBridge.start(withGameURL: self.game.fileURL)
+         self.deltaCore.emulatorBridge.loadGameSave(from: self.gameSaveURL)
+         
+-        self.runGameLoop()
+-        self.waitForFrameUpdate()
++        self.waitForFrameUpdate { self.runGameLoop() }
+         
+         self.emulationLock.unlock()
+         
+@@ -161,18 +159,20 @@ public extension EmulatorCore
+     
+     @discardableResult func stop() -> Bool
+     {
+-        guard self._state != .stopped else { return false }
+-        
+         self.emulationLock.lock()
++        guard self._state != .stopped else { self.emulationLock.unlock(); return false }
+         
+-        let isRunning = self.state == .running
++        let isRunning = self._state == .running
+         
+-        self._state = .stopped
+         defer { self.state = self._state }
+-        
++
+         if isRunning
+         {
+-            self.waitForFrameUpdate()
++            self.waitForFrameUpdate { self._state = .stopped }
++        }
++        else
++        {
++            self._state = .stopped
+         }
+         
+         self.save()
+@@ -187,14 +187,12 @@ public extension EmulatorCore
+     
+     @discardableResult func pause() -> Bool
+     {
+-        guard self._state == .running else { return false }
+-        
+         self.emulationLock.lock()
++        guard self._state == .running else { self.emulationLock.unlock(); return false }
+         
+-        self._state = .paused
+         defer { self.state = self._state }
+-        
+-        self.waitForFrameUpdate()
++
++        self.waitForFrameUpdate { self._state = .paused }
+         
+         self.save()
+         
+@@ -208,9 +206,8 @@ public extension EmulatorCore
+     
+     @discardableResult func resume() -> Bool
+     {
+-        guard self._state == .paused else { return false }
+-        
+         self.emulationLock.lock()
++        guard self._state == .paused else { self.emulationLock.unlock(); return false }
+         
+         self._state = .running
+         defer { self.state = self._state }
+@@ -218,15 +215,14 @@ public extension EmulatorCore
+         self.audioManager.isEnabled = true
+         self.deltaCore.emulatorBridge.resume()
+         
+-        self.runGameLoop()
+-        self.waitForFrameUpdate()
++        self.waitForFrameUpdate { self.runGameLoop() }
+         
+         self.emulationLock.unlock()
+         
+         return true
+     }
+     
+-    private func waitForFrameUpdate()
++    private func waitForFrameUpdate(updating: () -> Void)
+     {
+         let semaphore = DispatchSemaphore(value: 0)
+ 
+@@ -234,6 +230,9 @@ public extension EmulatorCore
+             semaphore.signal()
+         }
+ 
++        // Observe first: a fast frame can acknowledge the transition and exit
++        // before a waiter registered after the state change sees the notification.
++        updating()
+         semaphore.wait()
+ 
+         NotificationCenter.default.removeObserver(token, name: EmulatorCore.didUpdateFrameNotification, object: self)
+@@ -544,8 +543,8 @@ private extension EmulatorCore
+                 {                    
+                     if self.previousState != state
+                     {
+-                        NotificationCenter.default.post(name: EmulatorCore.didUpdateFrameNotification, object: self)
+                         self.previousState = state
++                        NotificationCenter.default.post(name: EmulatorCore.didUpdateFrameNotification, object: self)
+                     }
+                 }
+                 
+diff --git a/DeltaCore/Emulator Core/Video/VideoManager.swift b/DeltaCore/Emulator Core/Video/VideoManager.swift
+index 61b17b1..ffd0dbb 100644
+--- a/DeltaCore/Emulator Core/Video/VideoManager.swift	
++++ b/DeltaCore/Emulator Core/Video/VideoManager.swift	
+@@ -178,6 +178,14 @@ public extension VideoManager
+         self.renderThread.run()
+     }
+     
++    /// Call only from the emulator owner callback. BitmapProcessor has already copied
++    /// its pixels into immutable Data, so the returned CIImage can be rendered off-owner.
++    /// GPU-backed core outputs intentionally remain unsupported by this companion tap.
++    func detachedBitmapImage() -> CIImage? {
++        guard case .bitmap = videoFormat.format else { return nil }
++        return displayedImage?.copy() as? CIImage
++    }
++
+     func snapshot() -> UIImage?
+     {
+         guard let displayedImage = self.displayedImage else { return nil }
+diff --git a/DeltaCore/UI/Controller/ButtonsInputView.swift b/DeltaCore/UI/Controller/ButtonsInputView.swift
+index a7ea143..2903f02 100644
+--- a/DeltaCore/UI/Controller/ButtonsInputView.swift
++++ b/DeltaCore/UI/Controller/ButtonsInputView.swift
+@@ -74,6 +74,13 @@ class ButtonsInputView: UIView
+         fatalError("init(coder:) has not been implemented")
+     }
+     
++    /// Cancel held touchscreen inputs before moving controls or presenting an editor.
++    func cancelTouchInputs()
++    {
++        self.touchInputsMappingDictionary.removeAll()
++        self.updateInputs(for: [])
++    }
++
+     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?)
+     {
+         for touch in touches
+diff --git a/DeltaCore/UI/Controller/ControllerView.swift b/DeltaCore/UI/Controller/ControllerView.swift
+index 696ac22..631979b 100644
+--- a/DeltaCore/UI/Controller/ControllerView.swift
++++ b/DeltaCore/UI/Controller/ControllerView.swift
+@@ -54,6 +54,23 @@ public class ControllerView: UIView, GameController
+ {
+     //MARK: - Properties -
+     /** Properties **/
++    /// Touch input only; hardware controllers retain Delta's normal handling.
++    public var usesControlOnlyHitTesting = false
++
++    public func cancelTouchInputs() {
++        self.buttonsView.cancelTouchInputs()
++        // Thumbsticks and touch screens are separate input views; the companion
++        // GBA layout edits only native button/d-pad items.
++    }
++
++    /// Active hit regions in this view's coordinates, including Delta's extended edges.
++    public var controlHitFrames: [CGRect] {
++        guard let traits = self.controllerSkinTraits else { return [] }
++        return (self.controllerSkin?.items(for: traits) ?? []).map {
++            $0.extendedFrame.scaled(to: self.bounds)
++        }
++    }
++
+     public var controllerSkin: ControllerSkinProtocol? {
+         didSet {
+             self.updateControllerSkin()
+@@ -303,7 +320,9 @@ public class ControllerView: UIView, GameController
+     
+     public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView?
+     {
++        guard self.isUserInteractionEnabled, !self.isHidden, self.alpha > 0.01 else { return nil }
+         guard self.bounds.contains(point) else { return super.hitTest(point, with: event) }
++        if usesControlOnlyHitTesting, !controlHitFrames.contains(where: { $0.contains(point) }) { return nil }
+         
+         for (_, thumbstickView) in self.thumbstickViews
+         {
+@@ -561,6 +580,9 @@ public extension ControllerView
+                     if let previousImageView = previousButtonImageViews[item.id]
+                     {
+                         imageView = previousImageView
++                        // A placement/skin update can change artwork size while keeping
++                        // item IDs. Reload the image and bounds during the next layout.
++                        imageView.image = nil
+                         previousButtonImageViews[item.id] = nil
+                     }
+                     else
+diff --git a/DeltaCore/UI/Game/GameViewController.swift b/DeltaCore/UI/Game/GameViewController.swift
+index 4435946..615df51 100644
+--- a/DeltaCore/UI/Game/GameViewController.swift
++++ b/DeltaCore/UI/Game/GameViewController.swift
+@@ -57,6 +57,14 @@ private var kvoContext = 0
+ 
+ open class GameViewController: UIViewController, GameControllerReceiver
+ {
++    /// Optional layout region for app-owned companion panels; playback scheduling is unchanged.
++    public var gameplayLayoutBounds: CGRect?
++    /// Optional aspect-fit single-screen game region; native control skin stays untouched.
++    public var gameScreenLayoutBounds: CGRect?
++    /// Custom app controls may use the full viewport without changing game sizing.
++    public var controllerLayoutBounds: CGRect?
++    public var controllerLayoutSize: CGSize?
++
+     open var game: GameProtocol?
+     {
+         didSet
+@@ -289,6 +297,7 @@ open class GameViewController: UIViewController, GameControllerReceiver
+     open override func viewDidLayoutSubviews()
+     {
+         super.viewDidLayoutSubviews()
++        let layoutBounds = gameplayLayoutBounds ?? self.view.bounds
+         
+         let controllerViewFrame: CGRect
+         let availableGameFrame: CGRect
+@@ -301,8 +310,8 @@ open class GameViewController: UIViewController, GameControllerReceiver
+             // - Controller View is pinned to bottom and spans width of device as keyboard input view.
+             // - Game View should be vertically centered between top of screen and input view.
+             
+-            controllerViewFrame = CGRect(x: 0, y: 0, width: self.view.bounds.width, height: self.view.bounds.height)
+-            (_, availableGameFrame) = self.view.bounds.divided(atDistance: self.splitViewInputViewHeight, from: .maxYEdge)
++            controllerViewFrame = CGRect(x: 0, y: 0, width: layoutBounds.width, height: layoutBounds.height)
++            (_, availableGameFrame) = layoutBounds.divided(atDistance: self.splitViewInputViewHeight, from: .maxYEdge)
+             
+         case .none: fallthrough
+         case _? where self.controllerView.isHidden:
+@@ -310,23 +319,23 @@ open class GameViewController: UIViewController, GameControllerReceiver
+             // - Controller View should have a height of 0.
+             // - Game View should be centered in self.view.
+              
+-            (controllerViewFrame, availableGameFrame) = self.view.bounds.divided(atDistance: 0, from: .maxYEdge)
++            (controllerViewFrame, availableGameFrame) = layoutBounds.divided(atDistance: 0, from: .maxYEdge)
+             
+         case let traits? where traits.orientation == .portrait && !(self.controllerView.controllerSkin?.screens(for: traits) ?? []).contains(where: { $0.placement == .controller }):
+             // Portrait (and no custom screens with `controller` placement):
+             // - Controller View should be pinned to bottom of self.view and centered horizontally.
+             // - Game View should be vertically centered between top of screen and controller view.
+             
+-            let intrinsicContentSize = self.controllerView.intrinsicContentSize
++            let intrinsicContentSize = controllerLayoutSize ?? self.controllerView.intrinsicContentSize
+             if intrinsicContentSize.height != UIView.noIntrinsicMetric && intrinsicContentSize.width != UIView.noIntrinsicMetric
+             {
+-                let controllerViewHeight = (self.view.bounds.width / intrinsicContentSize.width) * intrinsicContentSize.height
+-                (controllerViewFrame, availableGameFrame) = self.view.bounds.divided(atDistance: controllerViewHeight, from: .maxYEdge)
++                let controllerViewHeight = (layoutBounds.width / intrinsicContentSize.width) * intrinsicContentSize.height
++                (controllerViewFrame, availableGameFrame) = layoutBounds.divided(atDistance: controllerViewHeight, from: .maxYEdge)
+             }
+             else
+             {
+-                controllerViewFrame = self.view.bounds
+-                availableGameFrame = self.view.bounds
++                controllerViewFrame = layoutBounds
++                availableGameFrame = layoutBounds
+             }
+             
+         case _?:
+@@ -334,20 +343,20 @@ open class GameViewController: UIViewController, GameControllerReceiver
+             // - Controller View should be centered vertically in view (though most of the time its height will == self.view height).
+             // - Game View should be centered in self.view.
+                         
+-            let intrinsicContentSize = self.controllerView.intrinsicContentSize
++            let intrinsicContentSize = controllerLayoutSize ?? self.controllerView.intrinsicContentSize
+             if intrinsicContentSize.height != UIView.noIntrinsicMetric && intrinsicContentSize.width != UIView.noIntrinsicMetric
+             {
+-                controllerViewFrame = AVMakeRect(aspectRatio: intrinsicContentSize, insideRect: self.view.bounds)
++                controllerViewFrame = AVMakeRect(aspectRatio: intrinsicContentSize, insideRect: layoutBounds)
+             }
+             else
+             {
+-                controllerViewFrame = self.view.bounds
++                controllerViewFrame = layoutBounds
+             }
+             
+-            availableGameFrame = self.view.bounds
++            availableGameFrame = layoutBounds
+         }
+         
+-        self.controllerView.frame = controllerViewFrame
++        self.controllerView.frame = controllerLayoutBounds ?? controllerViewFrame
+         
+         let gameScreenDimensions = self.emulatorCore?.preferredRenderingSize ?? CGSize(width: 1, height: 1)
+         let contentAspectRatio: CGSize
+@@ -407,6 +416,10 @@ open class GameViewController: UIViewController, GameControllerReceiver
+             self.gameView.frame = gameScreenFrame.offsetBy(dx: self.gameScreenOffset.x, dy: self.gameScreenOffset.y)
+         }
+         
++        if let gameScreenLayoutBounds, self.gameViews.count <= 1 {
++            self.gameView.frame = AVMakeRect(aspectRatio: gameScreenDimensions, insideRect: gameScreenLayoutBounds)
++        }
++
+         if let emulatorCore = self.emulatorCore, emulatorCore.state != .running
+         {
+             // WORKAROUND

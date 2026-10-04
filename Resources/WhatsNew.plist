@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>name</key>
+		<string>Liquid Glass UI</string>
+		<key>caption</key>
+		<string>An all-new look designed for iOS 26.</string>
+		<key>icon</key>
+		<string>drop.fill</string>
+		<key>isPatronExclusive</key>
+		<false/>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>Sega Genesis</string>
+		<key>caption</key>
+		<string>Play your favorite Genesis games with our gorgeous new controller skin.</string>
+		<key>icon</key>
+		<string>gamecontroller.fill</string>
+		<key>isPatronExclusive</key>
+		<false/>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>RetroAchievements</string>
+		<key>caption</key>
+		<string>Connect a RetroAchievements account to unlock achievements in games.</string>
+		<key>icon</key>
+		<string>trophy.fill</string>
+		<key>isPatronExclusive</key>
+		<false/>
+	</dict>
+	<dict>
+		<key>name</key>
+		<string>AirPlay Skins</string>
+		<key>caption</key>
+		<string>Customize the appearance of your games when AirPlaying to your TV.</string>
+		<key>icon</key>
+		<string>photo.tv</string>
+		<key>isPatronExclusive</key>
+		<true/>
+	</dict>
+</array>
+</plist>
