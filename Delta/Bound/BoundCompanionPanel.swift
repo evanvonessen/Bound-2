@@ -253,6 +253,32 @@ final class BoundCompanionCoordinator {
     func bringControlsToFront() {
         guard let owner else { return }
         layoutCycleButton(bounds: owner.view.bounds, safeArea: owner.view.safeAreaInsets)
+        layoutPiPAroundControls()
+    }
+    /// Native control frames settle after Delta lays out; reserve their complete hit targets.
+    private func layoutPiPAroundControls() {
+        guard let owner, let overlay, let controls, !isEditingNotes,
+              state.landscape || BoundAppearancePreferences().screenLayout == .delta else { return }
+        let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
+        let viewport = game.intersection(owner.view.bounds.inset(by: owner.view.safeAreaInsets))
+        guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
+        var occupied = owner.controllerView.controlHitFrames.map { owner.controllerView.convert($0, to: owner.view) }
+        if !controls.isHidden { occupied.append(controls.frame) }
+        #if DEBUG && targetEnvironment(simulator)
+        owner.gameView.accessibilityValue = "pip-hit-obstacles=" + occupied.map { rect in
+            let screen = owner.view.convert(rect, to: nil)
+            return String(format: "%.2f,%.2f,%.2f,%.2f", screen.minX, screen.minY, screen.width, screen.height)
+        }.joined(separator: "|")
+        #endif
+        let layout = BoundPiPLayout(viewport: viewport,
+            baseSize: CGSize(width: viewport.width * 0.36, height: viewport.width * 0.24),
+            scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale, occupied: occupied)
+        geometry = layout
+        let center = layout.clampedCenter(from: state.preferences.corner, translation: translation)
+        overlay.frame = CGRect(x: center.x - layout.size.width / 2, y: center.y - layout.size.height / 2,
+                               width: layout.size.width, height: layout.size.height)
+        host?.view.frame = overlay.bounds
+        overlay.isHidden = state.hidden || layout.size.width == 0 || layout.size.height == 0
     }
     private func layoutCycleButton(bounds: CGRect, safeArea: UIEdgeInsets) {
         guard let owner, let controls, let skin = owner.controllerView.controllerSkin,

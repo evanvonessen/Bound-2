@@ -51,4 +51,38 @@ final class PiPTests: XCTestCase {
         XCTAssertNil(layout.hiddenSide(from: .topRight, translation: CGSize(width: 50, height: 0), endX: 700))
         XCTAssertEqual(layout.hiddenSide(from: .bottomLeft, translation: CGSize(width: -400, height: 0)), .left)
     }
+    func testPiPAvoidsControlsAtEveryCornerAndDuringDragging() {
+        let viewport = CGRect(x: 100, y: 0, width: 600, height: 400)
+        let occupied = [CGRect(x: 95, y: 30, width: 100, height: 40),
+                        CGRect(x: 100, y: 85, width: 55, height: 50),
+                        CGRect(x: 630, y: 30, width: 100, height: 40),
+                        CGRect(x: 645, y: 85, width: 55, height: 50),
+                        CGRect(x: 90, y: 230, width: 110, height: 140),
+                        CGRect(x: 610, y: 230, width: 110, height: 140)]
+        for scale: CGFloat in [0.65, 1.4, 99] {
+            let layout = BoundPiPLayout(viewport: viewport, baseSize: CGSize(width: 216, height: 144), scale: scale, occupied: occupied)
+            XCTAssertGreaterThan(layout.size.width, 0)
+            XCTAssertEqual(layout.size.width / layout.size.height, 1.5, accuracy: 0.0001)
+            for corner in BoundPiPCorner.allCases {
+                for translation in [CGSize.zero, CGSize(width: 9999, height: -9999), CGSize(width: -90, height: 50)] {
+                    let center = layout.clampedCenter(from: corner, translation: translation)
+                    let frame = CGRect(x: center.x - layout.size.width/2, y: center.y - layout.size.height/2,
+                                       width: layout.size.width, height: layout.size.height)
+                    XCTAssertTrue(viewport.insetBy(dx: 7.99, dy: 7.99).contains(frame))
+                    for obstacle in occupied { XCTAssertFalse(frame.intersects(obstacle)) }
+                }
+            }
+        }
+    }
+    func testPiPBoundsOversizedRequestAndReportsCompletelyCoveredViewport() {
+        let viewport = CGRect(x: 0, y: 0, width: 100, height: 60)
+        let layout = BoundPiPLayout(viewport: viewport, baseSize: CGSize(width: 216, height: 144), scale: 1.4)
+        XCTAssertLessThanOrEqual(layout.size.width, 84)
+        XCTAssertLessThanOrEqual(layout.size.height, 44)
+        XCTAssertEqual(layout.size.width/layout.size.height, 1.5, accuracy: 0.0001)
+        let covered = BoundPiPLayout(viewport: viewport, baseSize: CGSize(width: 216, height: 144), scale: 1.4,
+                                    occupied: [viewport])
+        XCTAssertEqual(covered.size, .zero)
+    }
+
 }

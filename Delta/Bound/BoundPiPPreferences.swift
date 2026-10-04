@@ -50,12 +50,36 @@ final class BoundPiPPreferences {
 struct BoundPiPLayout {
     let viewport: CGRect
     let size: CGSize
+    private let occupied: [CGRect]
     private let padding: CGFloat = 8
-    init(viewport: CGRect, baseSize: CGSize, scale: CGFloat) {
+    init(viewport: CGRect, baseSize: CGSize, scale: CGFloat, occupied: [CGRect] = []) {
         self.viewport = viewport
-        self.size = CGSize(width: baseSize.width * scale, height: baseSize.height * scale)
+        let canvas = viewport.insetBy(dx: 8, dy: 8)
+        self.occupied = occupied.filter { !$0.isNull && !$0.isEmpty }
+            .map { $0.insetBy(dx: -2, dy: -2) }.filter { $0.intersects(canvas) }
+        guard canvas.width > 0, canvas.height > 0, baseSize.width > 0, baseSize.height > 0,
+              baseSize.width.isFinite, baseSize.height.isFinite, scale.isFinite, scale > 0 else {
+            size = .zero; return
+        }
+        let factor = min(scale, canvas.width / baseSize.width, canvas.height / baseSize.height)
+        let requested = CGSize(width: baseSize.width * factor, height: baseSize.height * factor)
+        if Self.clearCenter(preferred: CGPoint(x: canvas.midX, y: canvas.midY), size: requested,
+                            canvas: canvas, occupied: self.occupied) != nil {
+            size = requested; return
+        }
+        // Preserve aspect ratio while bounding the maximum to an available region.
+        // A fully covered custom layout has no placement; the caller hides its PiP.
+        var low: CGFloat = 0, high: CGFloat = 1
+        for _ in 0..<12 {
+            let mid = (low + high) / 2
+            let candidate = CGSize(width: requested.width * mid, height: requested.height * mid)
+            if Self.clearCenter(preferred: CGPoint(x: canvas.midX, y: canvas.midY), size: candidate,
+                                canvas: canvas, occupied: self.occupied) != nil { low = mid }
+            else { high = mid }
+        }
+        size = low > 0 ? CGSize(width: requested.width * low, height: requested.height * low) : .zero
     }
-    func center(_ corner: BoundPiPCorner) -> CGPoint {
+    private func preferredCenter(_ corner: BoundPiPCorner) -> CGPoint {
         let left = viewport.minX + padding + size.width / 2
         let right = viewport.maxX - padding - size.width / 2
         let top = viewport.minY + padding + size.height / 2
@@ -63,14 +87,47 @@ struct BoundPiPLayout {
         return CGPoint(x: corner == .topLeft || corner == .bottomLeft ? left : right,
                        y: corner == .topLeft || corner == .topRight ? top : bottom)
     }
+    func center(_ corner: BoundPiPCorner) -> CGPoint {
+        Self.clearCenter(preferred: preferredCenter(corner), size: size,
+                         canvas: viewport.insetBy(dx: padding, dy: padding), occupied: occupied)
+            ?? CGPoint(x: viewport.midX, y: viewport.midY)
+    }
     func clampedCenter(from corner: BoundPiPCorner, translation: CGSize) -> CGPoint {
         let origin = center(corner)
-        let left = viewport.minX + padding + size.width / 2
-        let right = viewport.maxX - padding - size.width / 2
-        let top = viewport.minY + padding + size.height / 2
-        let bottom = viewport.maxY - padding - size.height / 2
-        return CGPoint(x: min(max(origin.x + translation.width, left), max(left, right)),
-                       y: min(max(origin.y + translation.height, top), max(top, bottom)))
+        return Self.clearCenter(preferred: CGPoint(x: origin.x + translation.width, y: origin.y + translation.height),
+                                size: size, canvas: viewport.insetBy(dx: padding, dy: padding), occupied: occupied)
+            ?? origin
+    }
+    /// Rectangle edges define every feasible region; choose the closest clear placement.
+    private static func clearCenter(preferred: CGPoint, size: CGSize, canvas: CGRect, occupied: [CGRect]) -> CGPoint? {
+        guard size.width > 0, size.height > 0, canvas.width >= size.width, canvas.height >= size.height else { return nil }
+        let halfW = size.width / 2, halfH = size.height / 2
+        func clamp(_ p: CGPoint) -> CGPoint {
+            CGPoint(x: min(max(p.x, canvas.minX + halfW), canvas.maxX - halfW),
+                    y: min(max(p.y, canvas.minY + halfH), canvas.maxY - halfH))
+        }
+        func clear(_ p: CGPoint) -> Bool {
+            let rect = CGRect(x: p.x - halfW, y: p.y - halfH, width: size.width, height: size.height)
+            return !occupied.contains { obstacle in
+                let intersection = rect.intersection(obstacle)
+                return !intersection.isNull && intersection.width > 0.001 && intersection.height > 0.001
+            }
+        }
+        let initial = clamp(preferred)
+        if clear(initial) { return initial }
+        var xs = [initial.x, canvas.minX + halfW, canvas.maxX - halfW]
+        var ys = [initial.y, canvas.minY + halfH, canvas.maxY - halfH]
+        for obstacle in occupied {
+            xs += [obstacle.minX - halfW, obstacle.maxX + halfW]
+            ys += [obstacle.minY - halfH, obstacle.maxY + halfH]
+        }
+        var closest: CGPoint?, distance = CGFloat.infinity
+        for x in xs { for y in ys {
+            let point = clamp(CGPoint(x: x, y: y))
+            let dx = point.x - initial.x, dy = point.y - initial.y, d = dx * dx + dy * dy
+            if d < distance && clear(point) { closest = point; distance = d }
+        } }
+        return closest
     }
     func destination(from corner: BoundPiPCorner, translation: CGSize) -> BoundPiPCorner {
         let thresholdX = min(70, viewport.width * 0.16)

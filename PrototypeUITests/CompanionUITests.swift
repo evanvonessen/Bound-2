@@ -36,6 +36,22 @@ private func closeBoundSheet(in app: XCUIApplication) {
     resumeNativePause(in: app)
 }
 
+/// Actual DEBUG Simulator hit rectangles, read from the gameplay owner after native layout.
+/// This is observation only: real gestures still select every corner and size.
+private func actualPiPHitObstacles(in game: XCUIElement) throws -> [CGRect] {
+    let value = try XCTUnwrap(game.value as? String)
+    let prefix = "pip-hit-obstacles="
+    XCTAssertTrue(value.hasPrefix(prefix))
+    let rectangles = try value.dropFirst(prefix.count).split(separator: "|").map { field -> CGRect in
+        let components = field.split(separator: ",").compactMap { Double($0) }
+        XCTAssertEqual(components.count, 4)
+        guard components.count == 4 else { throw NSError(domain: "Malformed hit obstacle", code: 1) }
+        return CGRect(x: components[0], y: components[1], width: components[2], height: components[3])
+    }
+    XCTAssertGreaterThanOrEqual(rectangles.count, 8, "Observe native inputs and the full companion hit target")
+    return rectangles
+}
+
 final class CompanionUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -190,9 +206,17 @@ final class CompanionUITests: XCTestCase {
             game.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 .press(forDuration: 0.15, thenDragTo: game.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)))
             waitForFrame(friend) { frame in
-                let horizontal = left ? frame.minX - game.frame.minX : game.frame.maxX - frame.maxX
-                let vertical = top ? frame.minY - game.frame.minY : game.frame.maxY - frame.maxY
-                return abs(horizontal - 8) < 3 && abs(vertical - 8) < 3
+                (left ? frame.midX < game.frame.midX : frame.midX > game.frame.midX) &&
+                (top ? frame.midY < game.frame.midY : frame.midY > game.frame.midY)
+            }
+            for identifier in ["bound.native-menu", "bound.panel-cycle", "bound.native-l", "bound.native-r"] {
+                let fixed = element(identifier, in: app)
+                XCTAssertTrue(fixed.exists)
+                XCTAssertFalse(friend.frame.intersects(fixed.frame), "PiP must clear fixed control: " + identifier)
+            }
+            for obstacle in try actualPiPHitObstacles(in: game) {
+                XCTAssertFalse(friend.frame.insetBy(dx: 0.02, dy: 0.02).intersects(obstacle),
+                               "Friend PiP must clear actual extended native hit regions")
             }
             XCTAssertTrue(game.frame.insetBy(dx: -1, dy: -1).contains(friend.frame))
             XCTAssertFalse(app.buttons["Bound Settings"].exists)
@@ -632,6 +656,70 @@ final class CompanionUITests: XCTestCase {
         let relaunched = metrics()
         XCTAssertEqual(try XCTUnwrap(relaunched["zoom"]), try XCTUnwrap(relaunched["initial"]), accuracy: 0.001)
         screenshot("Bound-portrait-type-chart-reset-after-relaunch")
+    }
+
+    func testLandscapeTypeChartClearsFixedControlsAtEveryCornerAndScale() throws {
+        let app = openGame(arguments: ["--bound-ui-native-layout", "--bound-ui-friend-fixture", "--bound-ui-reset-layout"])
+        let game = element("bound.game-screen", in: app)
+        let chart = element("bound.type-chart", in: app)
+        let corners: [(String, CGFloat, CGFloat, Bool, Bool)] = [
+            ("top-left", 0.22, 0.22, true, true),
+            ("top-right", 0.78, 0.22, false, true),
+            ("bottom-right", 0.78, 0.78, false, false),
+            ("bottom-left", 0.22, 0.78, true, false)
+        ]
+        for layout in ["Classic", "Bound"] {
+            XCUIDevice.shared.orientation = .portrait
+            openBoundSettings(in: app)
+            let arrangement = element("bound.screen-layout", in: app)
+            XCTAssertTrue(arrangement.waitForExistence(timeout: 5))
+            arrangement.tap()
+            app.buttons[layout].firstMatch.tap()
+            closeBoundSheet(in: app)
+            selectCompanion("Types", in: app)
+            for (orientationName, orientation) in [("left", UIDeviceOrientation.landscapeLeft), ("right", .landscapeRight)] {
+                XCUIDevice.shared.orientation = orientation
+                waitForFrame(game) { app.frame.width > app.frame.height && $0.width > $0.height }
+                XCTAssertTrue(chart.waitForExistence(timeout: 5))
+                let originalGame = game.frame
+                var minimumWidth: CGFloat?
+                for (scaleName, scale, velocity) in [("minimum", CGFloat(0.1), CGFloat(-1)), ("maximum", CGFloat(8), CGFloat(1))] {
+                    // The collision-free chart itself guarantees both initial pinch
+                    // contacts are clear of native controls in either orientation.
+                    chart.pinch(withScale: scale, velocity: velocity)
+                    if scaleName == "minimum" { minimumWidth = chart.frame.width }
+                    else { XCTAssertGreaterThan(chart.frame.width, try XCTUnwrap(minimumWidth) + 5) }
+                    for (cornerName, x, y, left, top) in corners {
+                        // Real ancestor gesture starts in game pixels, never a native input.
+                        // Targets stay inside the viewport; obstacle avoidance may offset the
+                        // final frame from its ideal8pt edge without changing the chosen corner.
+                        game.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                            .press(forDuration: 0.15, thenDragTo: game.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)))
+                        waitForFrame(chart) { frame in
+                            (left ? frame.midX < game.frame.midX : frame.midX > game.frame.midX) &&
+                            (top ? frame.midY < game.frame.midY : frame.midY > game.frame.midY)
+                        }
+                        XCTAssertTrue(game.frame.insetBy(dx: -1, dy: -1).contains(chart.frame),
+                                      "The entire fitted chart viewport remains in gameplay")
+                        for identifier in ["bound.native-menu", "bound.panel-cycle", "bound.native-l", "bound.native-r"] {
+                            let fixed = element(identifier, in: app)
+                            XCTAssertTrue(fixed.exists)
+                            XCTAssertGreaterThan(fixed.frame.width, 0)
+                            XCTAssertLessThan(fixed.frame.width, app.frame.width * 0.5)
+                            XCTAssertFalse(chart.frame.intersects(fixed.frame),
+                                           "Chart must clear fixed control: " + identifier)
+                        }
+                        for obstacle in try actualPiPHitObstacles(in: game) {
+                            XCTAssertFalse(chart.frame.insetBy(dx: 0.02, dy: 0.02).intersects(obstacle),
+                                           "Chart must clear every actual extended native/cycle hit region")
+                        }
+                        XCTAssertEqual(game.frame, originalGame)
+                        XCTAssertFalse(app.buttons["Bound Settings"].exists)
+                        screenshot("Bound-chart-clearance-\(layout)-\(orientationName)-\(scaleName)-\(cornerName)")
+                    }
+                }
+            }
+        }
     }
 
     func testLandscapeMenuAndCycleSitBelowTheirNativeShoulders() throws {

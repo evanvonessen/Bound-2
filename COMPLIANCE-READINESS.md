@@ -14,7 +14,7 @@ Existing source-integrity verification: `python3 PrototypeTools/verify_sources.p
 
 Before distributing a binary, identify the exact release commit, version/build, artifact SHA-256, dependency pins and modified snapshot hashes. Preserve actual build scripts/project files, generated inputs needed to build, patches and applicable third-party notices. Verify a clean checkout builds with the documented prerequisites and that a recipient can actually obtain the matching materials. Keep credentials, signing keys/profiles, account sessions, personal ROMs and app data out of source packages.
 
-The public repository provides access to tracked build sources and inputs, but source/binary version matching still needs verification for each release. The working tree under review is intended for 0.5.3 (170); do not claim it matches a released artifact until the exact commit is published and linked with that artifact's digest. Record that mapping in the release notes and artifact metadata. Recipients can then clone the repository and check out the recorded commit:
+The public repository provides access to tracked build sources and inputs, but source/binary version matching still needs verification for each release. The working tree under review is intended for 0.5.4 (171); do not claim it matches a released artifact until the exact commit is published and linked with that artifact's digest. Record that mapping in the release notes and artifact metadata. Recipients can then clone the repository and check out the recorded commit:
 
 ```sh
 git clone https://github.com/evanvonessen/Bound-2.git

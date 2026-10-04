@@ -8,6 +8,7 @@ Modifications include:
 
 - Bound 2 branding and direct native Bound.xcodeproj / Bound scheme, retaining the upstream Delta module/core identities.
 - Friend video with the existing Bound backend/Agora adapter; detached native-frame capture, bounded outgoing/receive handoffs and lifecycle cleanup. DEBUG local/paired fixtures are verification-only.
+- Collision-aware PiP placement reserves native/cycle hit regions, caps size uniformly to available space, and preserves complete chart fitting.
 - Portrait friend-above-game layouts, landscape full-height gameplay/PiP, configurable placements, original PiP gestures/opacity preferences, notes and a type chart.
 - Native haptic preferences, Classic/Minimal appearance choices, accessibility/settings/import refinements and runtime core identity display.
 - Pinned, tracked dependency snapshots and generated build inputs, so ordinary Xcode Run does not require submodule initialization, Homebrew, pod install, preparation scripts or mogenerator.
