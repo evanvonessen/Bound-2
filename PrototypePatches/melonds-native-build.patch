@@ -1,0 +1,52 @@
+diff --git a/MelonDSDeltaCore.xcodeproj/project.pbxproj b/MelonDSDeltaCore.xcodeproj/project.pbxproj
+index 3c5dd4c..1f095a5 100644
+--- a/MelonDSDeltaCore.xcodeproj/project.pbxproj
++++ b/MelonDSDeltaCore.xcodeproj/project.pbxproj
+@@ -1064,6 +1064,7 @@
+ 		BF02B28924366DDF001B4E65 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				DEVELOPMENT_TEAM = 6XVY5G3U44;
+@@ -1089,6 +1090,7 @@
+ 		BF02B28A24366DDF001B4E65 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				DEVELOPMENT_TEAM = 6XVY5G3U44;
+@@ -1109,6 +1111,7 @@
+ 		BF73178B2356624000774F10 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				CLANG_ANALYZER_NONNULL = YES;
+ 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+@@ -1179,6 +1182,7 @@
+ 		BF73178C2356624000774F10 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				CLANG_ANALYZER_NONNULL = YES;
+ 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+@@ -1244,6 +1248,7 @@
+ 		BF73178E2356624000774F10 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -1281,6 +1286,7 @@
+ 		BF73178F2356624000774F10 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_STYLE = Automatic;

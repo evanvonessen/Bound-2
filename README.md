@@ -22,7 +22,7 @@ Friends uses the existing Bound backend and Agora adapter. No new account or ser
 
 ## Build and verification
 
-`PrototypeTools/prepare.sh` downloads pinned public dependency sources, applies committed compatibility patches and prepares public client configuration. Modified dependency worktrees are expected; the patches are versioned here. Do not discard them. CocoaPods sources are vendored; `pod install` is not required. The existing Podfile and internal Delta target stay aligned. `Systems/build.sh` builds upstream dependency frameworks only.
+`PrototypeTools/prepare.sh` downloads pinned public dependency sources, applies committed compatibility patches and prepares public client configuration. Modified dependency worktrees are expected; the patches are versioned here. Do not discard them. CocoaPods sources are vendored; `pod install` is not required. The existing Podfile and internal Delta target stay aligned. `Systems/build.sh` builds upstream dependency frameworks only. Recorded native-build patches align older dependency deployment targets with iOS 17 and let the app sign embedded GPGX/MelonDS frameworks with its own identity.
 
 `swift test --package-path PrototypeTests` runs model tests. `PrototypeTools/verify.sh` runs models, hosted offline integration, Simulator UI and unsigned iPhone Release validation. Set `QA_SIMULATOR_ID` for an isolated Simulator. Build output and app data are ignored by Git.
 

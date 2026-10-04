@@ -1,0 +1,70 @@
+diff --git a/GPGXDeltaCore.xcodeproj/project.pbxproj b/GPGXDeltaCore.xcodeproj/project.pbxproj
+index 194fef3..64da162 100644
+--- a/GPGXDeltaCore.xcodeproj/project.pbxproj
++++ b/GPGXDeltaCore.xcodeproj/project.pbxproj
+@@ -874,6 +874,7 @@
+ 		D5DC4E492E258AE800764740 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+ 				CLANG_ANALYZER_NONNULL = YES;
+@@ -941,6 +942,7 @@
+ 		D5DC4E4A2E258AE800764740 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				ALWAYS_SEARCH_USER_PATHS = NO;
+ 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+ 				CLANG_ANALYZER_NONNULL = YES;
+@@ -1001,6 +1003,7 @@
+ 		D5DC53512E258D3600764740 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				DEVELOPMENT_TEAM = 6XVY5G3U44;
+ 				EXCLUDED_SOURCE_FILE_NAMES = (
+@@ -1039,7 +1042,7 @@
+ 					"Genesis-Plus-GX/gcw0/utils.c",
+ 				);
+ 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+ 				OTHER_CFLAGS = (
+ 					"-DUSE_32BPP_RENDERING",
+ 					"-DFLAC__HAS_OGG=0",
+@@ -1059,6 +1062,7 @@
+ 		D5DC53522E258D3600764740 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				DEVELOPMENT_TEAM = 6XVY5G3U44;
+ 				EXCLUDED_SOURCE_FILE_NAMES = (
+@@ -1097,7 +1101,7 @@
+ 					"Genesis-Plus-GX/gcw0/utils.c",
+ 				);
+ 				GCC_WARN_INHIBIT_ALL_WARNINGS = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+ 				OTHER_CFLAGS = (
+ 					"-DUSE_32BPP_RENDERING",
+ 					"-DFLAC__HAS_OGG=0",
+@@ -1117,6 +1121,7 @@
+ 		D5DF87272E25A670005CCF92 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+@@ -1151,6 +1156,7 @@
+ 		D5DF87282E25A670005CCF92 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
++				CODE_SIGNING_ALLOWED = NO;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;

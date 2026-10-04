@@ -61,6 +61,11 @@ apply_recorded_patch() {
 apply_recorded_patch Vendor/RevenueCat PrototypePatches/revenuecat-5.8.0-swift-memberwise.patch
 apply_recorded_patch Cores/SNESDeltaCore/snes9x PrototypePatches/snes9x-const-comparators.patch
 apply_recorded_patch Cores/DeltaCore PrototypePatches/deltacore-companion.patch
+# Native root builds must not depend on CLI deployment/signing overrides.
+# The app signs embedded dynamic frameworks with its own identity.
+apply_recorded_patch Cores/GPGXDeltaCore PrototypePatches/gpgx-native-build.patch
+apply_recorded_patch Cores/MelonDSDeltaCore PrototypePatches/melonds-native-build.patch
+apply_recorded_patch Cores/DeltaCore/External/ZIPFoundation PrototypePatches/zipfoundation-ios-target.patch
 config_source="${BOUND_PUBLIC_CONFIG:-$(pwd)/PrototypeConfiguration/public-client.json}"
 if [[ -f "$config_source" ]]; then
     cp "$config_source" Delta/Bound/cloud-configuration.json
