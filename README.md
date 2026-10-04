@@ -14,7 +14,7 @@ open Bound.xcodeproj
 
 Core and framework source snapshots are included, including controller assets and generated model files. No preparation command, Homebrew, Git LFS, submodule initialization or mogenerator installation is required for ordinary Run. Xcode resolves the app's pinned Swift packages normally. The optional mogenerator target is only for developers regenerating model sources.
 
-Select **Bound**, select your iPhone, choose your existing signing team if needed, then Run. Run uses Release. The native app target is internally named Delta to retain upstream module and vendored CocoaPods identities; this is a direct app build, not a nested app-build wrapper. Version 0.5.4 (171), display name Bound 2. The separate prototype bundle identity is retained so updates preserve its local data.
+Select **Bound**, select your iPhone, choose your existing signing team if needed, then Run. Run uses Release. The native app target is internally named Delta to retain upstream module and vendored CocoaPods identities; this is a direct app build, not a nested app-build wrapper. Version 0.5.5 (172), display name Bound 2. The separate prototype bundle identity is retained so updates preserve its local data.
 
 Import a supported ROM through the Library **+** button. The Files picker accepts regular data when providers use alternate types; the importer validates supported file extensions and registered cores. Unsupported files show an import error. Gameplay settings offer Classic/Bound layouts, themes, native haptics and button placement. The button beside the native Menu cycles Friends, Notes and Types. Friend login and Bound settings are in the native pause menu.
 

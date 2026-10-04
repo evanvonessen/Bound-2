@@ -5,9 +5,14 @@ import DeltaCore
 @MainActor
 final class BoundCompanionCycleButton: UIButton {
     var cycle: (() -> Void)?
+    /// Tests can replace the output without touching device feedback or emulator inputs.
+    var buttonFeedback: (() -> Void)?
+    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     private var visualSize = CGSize(width: 17, height: 17)
     private var landscape = false
     private var minimal = false
+    private var boundPortrait = false
+    private var selectArtwork: UIImage?
     private var content: BoundPiPContent = .friend
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -15,25 +20,67 @@ final class BoundCompanionCycleButton: UIButton {
         accessibilityLabel = "Bound companion panel"
         accessibilityHint = "Cycles Friend, Notes, and Types"
         addTarget(self, action: #selector(advance), for: .touchUpInside)
+        addTarget(self, action: #selector(pressVisual), for: [.touchDown, .touchDragEnter])
+        addTarget(self, action: #selector(releaseVisual), for: [.touchCancel, .touchUpOutside, .touchDragExit])
         backgroundColor = .clear
         isExclusiveTouch = false
+        feedbackGenerator.prepare()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    @objc private func advance() { cycle?() }
+    override var isHighlighted: Bool { didSet { setNeedsDisplay() } }
+    @objc private func pressVisual() {
+        guard isEnabled, isUserInteractionEnabled, !isHidden else { return }
+        isHighlighted = true
+    }
+    @objc private func releaseVisual() { isHighlighted = false }
+    @objc private func advance() {
+        isHighlighted = false
+        guard isEnabled, isUserInteractionEnabled, !isHidden else { return }
+        if BoundAppearancePreferences().screenLayout == .bound && Settings.isButtonHapticFeedbackEnabled {
+            if let buttonFeedback { buttonFeedback() }
+            else {
+                // Same intensity and capability fallback as Delta's native ButtonsInputView.
+                switch UIDevice.current.feedbackSupportLevel {
+                case .feedbackGenerator: feedbackGenerator.impactOccurred()
+                case .basic, .unsupported: UIDevice.current.vibrate()
+                }
+            }
+        }
+        cycle?()
+    }
+    var artworkFrame: CGRect {
+        CGRect(x: bounds.midX-visualSize.width/2, y: bounds.midY-visualSize.height/2,
+               width: visualSize.width, height: visualSize.height)
+    }
+    /// Native Select/Start assets press inward by two points, immediately on
+    /// contact and immediately reset on release. No spring or delayed animation.
+    var materialFrame: CGRect {
+        let inner = artworkFrame.insetBy(dx: 1.2, dy: 1.2)
+        return isHighlighted ? inner.insetBy(dx: 2, dy: 2) : inner
+    }
     func configure(menuFrame: CGRect, controllerFrame: CGRect, landscape: Bool, minimal: Bool,
-                   content: BoundPiPContent, canvas: CGRect, occupied: [CGRect], rightShoulderFrame: CGRect? = nil, menuHitSize: CGSize? = nil) {
+                   content: BoundPiPContent, canvas: CGRect, occupied: [CGRect], rightShoulderFrame: CGRect? = nil, menuHitSize: CGSize? = nil, boundPortrait: Bool = false, selectArtwork: UIImage? = nil, rightControlGutter: CGRect? = nil, menuHitFrame: CGRect? = nil) {
+        self.boundPortrait = boundPortrait; self.selectArtwork = selectArtwork
         self.landscape = landscape; self.minimal = minimal; self.content = content
         visualSize = minimal ? CGSize(width: max(48, menuFrame.width), height: max(44, menuFrame.height)) : menuFrame.size
-        let hitSize = CGSize(width: max(44, max(visualSize.width, menuHitSize?.width ?? 0)), height: max(44, max(visualSize.height, menuHitSize?.height ?? 0)))
+        if landscape, let gutter = rightControlGutter {
+            visualSize.width = min(visualSize.width, gutter.width)
+            visualSize.height = min(visualSize.height, gutter.height)
+        }
+        let requestedWidth = max(44, max(visualSize.width, menuHitSize?.width ?? 0))
+        let hitSize = CGSize(width: rightControlGutter.map { min(requestedWidth, $0.width) } ?? requestedWidth, height: max(44, max(visualSize.height, menuHitSize?.height ?? 0)))
         let preferred: CGPoint
-        if !landscape {
+        if let gutter = rightControlGutter, landscape {
+            preferred = CGPoint(x: gutter.maxX - hitSize.width/2,
+                                y: (menuHitFrame?.maxY ?? menuFrame.maxY) + 8 + hitSize.height/2)
+        } else if !landscape {
             preferred = CGPoint(x: controllerFrame.minX + controllerFrame.maxX - menuFrame.midX, y: menuFrame.midY)
         } else if let right = rightShoulderFrame {
             preferred = CGPoint(x: right.midX, y: right.maxY + hitSize.height / 2 + 10)
         } else {
             preferred = CGPoint(x: controllerFrame.minX + controllerFrame.maxX - menuFrame.midX, y: menuFrame.midY)
         }
-        guard let available = Self.clearFrame(preferred: preferred, size: hitSize, canvas: canvas, occupied: occupied) else {
+        guard let available = Self.clearFrame(preferred: preferred, size: hitSize, canvas: rightControlGutter ?? canvas, occupied: occupied) else {
             // A pathological custom layout can fill the entire viewport. Do not
             // put a companion hit target over native game inputs in that case.
             isHidden = true; isUserInteractionEnabled = false; frame = .zero
@@ -78,16 +125,36 @@ final class BoundCompanionCycleButton: UIButton {
         return nil
     }
     override func draw(_ rect: CGRect) {
-        let box = CGRect(x: bounds.midX-visualSize.width/2, y: bounds.midY-visualSize.height/2, width: visualSize.width, height: visualSize.height)
+        let box = artworkFrame
+        if boundPortrait && !landscape && !minimal, let selectArtwork {
+            // Native composite artwork supplies Select's black bezel/shadow,
+            // while its individual asset supplies the gray material and bevel.
+            let context = UIGraphicsGetCurrentContext()
+            context?.saveGState()
+            context?.setShadow(offset: CGSize(width: 0, height: 1), blur: 1.5, color: UIColor.black.withAlphaComponent(0.45).cgColor)
+            UIColor.black.withAlphaComponent(0.9).setFill()
+            UIBezierPath(roundedRect: box, cornerRadius: min(box.width, box.height)/2).fill()
+            context?.restoreGState()
+            selectArtwork.draw(in: materialFrame)
+            drawMark(in: materialFrame, ink: .darkGray, etched: true)
+            return
+        }
         let fill: UIColor = minimal ? .secondarySystemBackground : landscape ? .deltaPurple : .black
         let ink: UIColor = minimal ? .label : .white
         let shape = UIBezierPath(roundedRect: box, cornerRadius: min(box.width, box.height)/2)
         fill.setFill(); shape.fill()
         if landscape || minimal { UIColor.white.withAlphaComponent(minimal ? 0.25 : 0.85).setStroke(); shape.lineWidth = 1.5; shape.stroke() }
-        if let mark = UIImage(named: "DeltaBoundMark")?.withTintColor(ink, renderingMode: .alwaysOriginal) {
-            let side = min(box.width, box.height) * 0.72
-            mark.draw(in: CGRect(x: box.midX-side/2, y: box.midY-side/2, width: side, height: side))
+        drawMark(in: box, ink: ink, etched: boundPortrait && !landscape)
+    }
+    private func drawMark(in box: CGRect, ink: UIColor, etched: Bool) {
+        guard let mark = UIImage(named: "DeltaBoundMark") else { return }
+        let side = min(box.width, box.height) * 0.72
+        let target = CGRect(x: box.midX-side/2, y: box.midY-side/2, width: side, height: side)
+        if etched {
+            mark.withTintColor(.white.withAlphaComponent(0.5), renderingMode: .alwaysOriginal)
+                .draw(in: target.offsetBy(dx: 0, dy: 0.5))
         }
+        mark.withTintColor(ink, renderingMode: .alwaysOriginal).draw(in: target)
     }
 }
 

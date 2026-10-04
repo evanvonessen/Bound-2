@@ -2,28 +2,28 @@ import SwiftUI
 
 /// Embed directly in a Form; no second source of truth or extra feedback generator.
 struct BoundAppearanceSettings: View {
-    @AppStorage(BoundAppearancePreferences.screenLayoutKey) private var screenLayoutRaw = BoundScreenLayout.delta.rawValue
-    @AppStorage(BoundAppearancePreferences.themeKey) private var themeRaw = BoundTheme.delta.rawValue
+    @AppStorage(BoundAppearancePreferences.screenLayoutKey) private var screenLayoutRaw = BoundAppearancePreferences.defaultScreenLayout.rawValue
+    @AppStorage(BoundAppearancePreferences.themeKey) private var themeRaw = BoundAppearancePreferences.defaultTheme.rawValue
     @AppStorage(Settings.Name.isButtonHapticFeedbackEnabled.rawValue) private var buttons = true
     @AppStorage(Settings.Name.isThumbstickHapticFeedbackEnabled.rawValue) private var sticks = true
     var body: some View {
         Section("Screen layout") {
             Picker("Screen arrangement", selection: Binding(get: {
-                BoundScreenLayout(rawValue: screenLayoutRaw) ?? .delta
+                BoundScreenLayout(rawValue: screenLayoutRaw) ?? BoundAppearancePreferences.defaultScreenLayout
             }, set: { BoundAppearancePreferences().screenLayout = $0 })) {
                 ForEach(BoundScreenLayout.allCases, id: \.rawValue) { layout in Text(layout.title).tag(layout) }
             }.accessibilityIdentifier("bound.screen-layout")
-            Text("Classic preserves the original screen geometry and shows the companion as PiP. Bound places the companion above gameplay in portrait and uses full-height gameplay with PiP in landscape.").font(.footnote).foregroundStyle(.secondary)
-            Button("Reset screen layout to Classic") { BoundAppearancePreferences().resetScreenLayout() }.accessibilityIdentifier("bound.reset-screen-layout")
+            Text("Classic preserves the original screen geometry and shows the companion as PiP. Bound is the default and places the companion above gameplay in portrait and uses full-height gameplay with PiP in landscape.").font(.footnote).foregroundStyle(.secondary)
+            Button("Reset screen layout to Bound") { BoundAppearancePreferences().resetScreenLayout() }.accessibilityIdentifier("bound.reset-screen-layout")
             Text("Changing or resetting screen layout keeps your button placements, theme, feedback and PiP preferences.").font(.footnote).foregroundStyle(.secondary)
         }
         Section("Appearance") {
             Picker("Theme", selection: Binding(get: {
-                BoundTheme(rawValue: themeRaw) ?? .delta
+                BoundTheme(rawValue: themeRaw) ?? BoundAppearancePreferences.defaultTheme
             }, set: { BoundAppearancePreferences().theme = $0 })) {
                 ForEach(BoundTheme.allCases, id: \.rawValue) { theme in Text(theme.title).tag(theme) }
             }.accessibilityIdentifier("bound.theme")
-            Text("Classic keeps the original controller style. Minimal uses simple controls and follows your device's light or dark appearance.").font(.footnote).foregroundStyle(.secondary)
+            Text("Classic is the default and keeps the original controller style. Minimal uses simple controls and follows your device's light or dark appearance.").font(.footnote).foregroundStyle(.secondary)
         }
         Section {
             Toggle("Button feedback", isOn: Binding(get: { buttons }, set: { Settings.isButtonHapticFeedbackEnabled = $0 }))

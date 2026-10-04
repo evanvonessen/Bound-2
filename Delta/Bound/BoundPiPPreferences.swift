@@ -20,11 +20,21 @@ final class BoundPiPPreferences {
         get { BoundPiPCorner(rawValue: defaults.string(forKey: key("corner")) ?? "") ?? .topRight }
         set { defaults.set(newValue.rawValue, forKey: key("corner")) }
     }
+    func corner(for content: BoundPiPContent) -> BoundPiPCorner {
+        let name = key(content.rawValue + ".corner")
+        if let value = defaults.string(forKey: name), let saved = BoundPiPCorner(rawValue: value) { return saved }
+        let inherited = corner
+        defaults.set(inherited.rawValue, forKey: name)
+        return inherited
+    }
+    func setCorner(_ value: BoundPiPCorner, for content: BoundPiPContent) {
+        defaults.set(value.rawValue, forKey: key(content.rawValue + ".corner"))
+    }
     func scale(for content: BoundPiPContent) -> Double {
         validNumber(key(content.rawValue + ".scale"), range: 0.65...1.4)
     }
     func opacity(for content: BoundPiPContent) -> Double {
-        validNumber(key(content.rawValue + ".opacity"), range: 0...1)
+        content == .types ? 1 : validNumber(key(content.rawValue + ".opacity"), range: 0...1)
     }
     private func validNumber(_ name: String, range: ClosedRange<Double>) -> Double {
         guard let value = defaults.object(forKey: name) as? NSNumber,
@@ -36,7 +46,7 @@ final class BoundPiPPreferences {
         defaults.set(min(1.4, max(0.65, value)), forKey: key(content.rawValue + ".scale"))
     }
     func setOpacity(_ value: Double, for content: BoundPiPContent) {
-        guard value.isFinite else { return }
+        guard content != .types, value.isFinite else { return }
         defaults.set(min(1, max(0, value)), forKey: key(content.rawValue + ".opacity"))
     }
     func transparency(for content: BoundPiPContent) -> Double { 1 - opacity(for: content) }

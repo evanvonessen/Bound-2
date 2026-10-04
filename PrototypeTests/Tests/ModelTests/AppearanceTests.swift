@@ -35,20 +35,56 @@ extension AppearanceTests {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = BoundAppearancePreferences(defaults: defaults)
-        XCTAssertEqual(preferences.screenLayout, .delta)
-        preferences.screenLayout = .bound
+        XCTAssertEqual(preferences.screenLayout, .bound)
+        preferences.screenLayout = .delta
         preferences.theme = .minimal
-        XCTAssertEqual(BoundAppearancePreferences(defaults: defaults).screenLayout, .bound)
+        XCTAssertEqual(BoundAppearancePreferences(defaults: defaults).screenLayout, .delta)
         preferences.reset()
-        XCTAssertEqual(preferences.screenLayout, .bound, "Appearance reset must not replace the saved arrangement")
+        XCTAssertEqual(preferences.screenLayout, .delta, "Appearance reset must not replace the saved arrangement")
         preferences.theme = .minimal
         defaults.set(0.4, forKey: "bound.delta.pip.v1.friend.opacity")
         defaults.set("kept", forKey: "bound.controls.v1.test")
         preferences.resetScreenLayout()
-        XCTAssertEqual(preferences.screenLayout, .delta)
+        XCTAssertEqual(preferences.screenLayout, .bound)
         XCTAssertEqual(preferences.theme, .minimal)
         XCTAssertEqual(defaults.double(forKey: "bound.delta.pip.v1.friend.opacity"), 0.4)
         XCTAssertEqual(defaults.string(forKey: "bound.controls.v1.test"), "kept")
+    }
+    func testUnsetDefaultsSurviveReopeningWithoutCreatingSavedChoices() throws {
+        let suite = "BoundFreshDefaults." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for _ in 0..<2 {
+            let reopened = try XCTUnwrap(UserDefaults(suiteName: suite))
+            let preferences = BoundAppearancePreferences(defaults: reopened)
+            XCTAssertEqual(preferences.screenLayout, .bound)
+            XCTAssertEqual(preferences.theme, .delta)
+            XCTAssertNil(reopened.object(forKey: BoundAppearancePreferences.screenLayoutKey))
+            XCTAssertNil(reopened.object(forKey: BoundAppearancePreferences.themeKey))
+        }
+    }
+    func testEveryExplicitArrangementSurvivesReopeningAndScreenResetKeepsFeedback() throws {
+        let suite = "BoundSavedDefaults." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(false, forKey: "isButtonHapticFeedbackEnabled")
+        defaults.set(false, forKey: "isThumbstickHapticFeedbackEnabled")
+        let preferences = BoundAppearancePreferences(defaults: defaults)
+        preferences.theme = .minimal
+        for layout in BoundScreenLayout.allCases {
+            preferences.screenLayout = layout
+            let reopened = try XCTUnwrap(UserDefaults(suiteName: suite))
+            XCTAssertEqual(BoundAppearancePreferences(defaults: reopened).screenLayout, layout)
+            XCTAssertEqual(BoundAppearancePreferences(defaults: reopened).theme, .minimal)
+            XCTAssertFalse(reopened.bool(forKey: "isButtonHapticFeedbackEnabled"))
+            XCTAssertFalse(reopened.bool(forKey: "isThumbstickHapticFeedbackEnabled"))
+        }
+        preferences.screenLayout = .delta
+        preferences.resetScreenLayout()
+        XCTAssertEqual(preferences.screenLayout, .bound)
+        XCTAssertEqual(preferences.theme, .minimal)
+        XCTAssertFalse(defaults.bool(forKey: "isButtonHapticFeedbackEnabled"))
+        XCTAssertFalse(defaults.bool(forKey: "isThumbstickHapticFeedbackEnabled"))
     }
     func testUnknownScreenLayoutFallsBackWithoutOverwritingSavedValue() throws {
         let suite = "BoundScreenLayoutUnknown." + UUID().uuidString
@@ -56,10 +92,10 @@ extension AppearanceTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("future", forKey: BoundAppearancePreferences.screenLayoutKey)
         let preferences = BoundAppearancePreferences(defaults: defaults)
-        XCTAssertEqual(preferences.screenLayout, .delta)
+        XCTAssertEqual(preferences.screenLayout, .bound)
         XCTAssertEqual(defaults.string(forKey: BoundAppearancePreferences.screenLayoutKey), "future")
         preferences.resetScreenLayout()
-        XCTAssertEqual(defaults.string(forKey: BoundAppearancePreferences.screenLayoutKey), "delta")
+        XCTAssertEqual(defaults.string(forKey: BoundAppearancePreferences.screenLayoutKey), "bound")
     }
     func testActualGBAIntegrationDistinguishesEngineAndUsesPinnedFallback() throws {
         let details = BoundEmulationDetails(packageName: "GBADeltaCore", packageIdentifier: "com.rileytestut.GBADeltaCore", packageVersion: nil)

@@ -20,7 +20,7 @@ class PauseViewController: UIViewController, PauseInfoProviding
     }
     
     var pauseItems: [MenuItem] {
-        return [self.saveStateItem, self.loadStateItem, self.cheatCodesItem, self.fastForwardItem, self.sustainButtonsItem, self.screenshotItem, self.askLuItem].compactMap { $0 }
+        return [self.saveStateItem, self.loadStateItem, self.cheatCodesItem, self.fastForwardItem, self.sustainButtonsItem, self.screenshotItem, self.controllerModeItem, self.askLuItem].compactMap { $0 }
     }
     
     var closeButtonTitle: String = NSLocalizedString("Main Menu", comment: "")
@@ -43,6 +43,7 @@ class PauseViewController: UIViewController, PauseInfoProviding
     var fastForwardItem: MenuItem?
     var sustainButtonsItem: MenuItem?
     var screenshotItem: MenuItem?
+    var controllerModeItem: MenuItem?
     var askLuItem: MenuItem?
     
     /// PauseInfoProviding
@@ -170,6 +171,7 @@ extension PauseViewController
             {
                 let gridMenuViewController = self.pauseNavigationController.topViewController as! GridMenuViewController
                 gridMenuViewController.items = self.pauseItems
+                (gridMenuViewController.collectionViewLayout as? GridCollectionViewLayout)?.centersIncompleteRows = self.pauseItems.count == 7
                 
                 let navigationBarAppearance = self.pauseNavigationController.navigationBar.standardAppearance.copy()
                 navigationBarAppearance.backgroundEffect = UIBlurEffect(style: .dark)
@@ -239,6 +241,7 @@ private extension PauseViewController
         self.sustainButtonsItem = nil
         self.fastForwardItem = nil
         self.screenshotItem = nil
+        self.controllerModeItem = nil
         
         guard let emulatorCore = self.emulatorCore else { return }
         
@@ -281,9 +284,18 @@ private extension PauseViewController
         })
         
         self.fastForwardItem = MenuItem(text: NSLocalizedString("Fast Forward", comment: ""), image: #imageLiteral(resourceName: "FastForward"), action: { _ in })
-        self.sustainButtonsItem = MenuItem(text: NSLocalizedString("Friend Login", comment: ""), image: #imageLiteral(resourceName: "SustainButtons"), action: { _ in })
+        self.sustainButtonsItem = MenuItem(text: NSLocalizedString("Connect", comment: ""), image: #imageLiteral(resourceName: "SustainButtons"), action: { _ in })
         self.screenshotItem = MenuItem(text: NSLocalizedString("Bound Settings", comment: ""), image: #imageLiteral(resourceName: "Screenshot"), action: { _ in })
         
+        self.controllerModeItem = MenuItem(text: "Controller Mode", image: UIImage(systemName: "gamecontroller.fill"), action: { item in
+            let preferences = BoundControllerModePreferences()
+            preferences.isEnabled = !preferences.isEnabled
+            item.isSelected = preferences.isEnabled
+        })
+        self.controllerModeItem?.isSelected = BoundControllerModePreferences().isEnabled
+        self.controllerModeItem?.preservesSelectionOnReturn = true
+        self.controllerModeItem?.accessibilityIdentifier = "bound.controller-mode"
+
         if let game = emulatorCore.game as? Game
         {
             let menuOptions = self.makeFastForwardMenuOptions(for: game)

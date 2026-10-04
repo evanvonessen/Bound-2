@@ -15,3 +15,5 @@ Modifications include:
 - Local build compatibility patches listed in PrototypePatches, including dependency framework signing separation. Dependencies build unsigned; the containing app signs embedded frameworks with the selected existing app team.
 
 These modifications do not claim authorship of Delta, emulator engines, controller artwork or third-party SDKs. The source repository is public at https://github.com/evanvonessen/Bound-2 (verified 2026-10-04), following the user's visibility change. The app has not been certified for public/App Store distribution. Source/permission provenance, proprietary SDK compatibility, asset permissions and exact source-to-binary release matching/completeness remain review gates described in COMPLIANCE-READINESS.md and LICENSES/DEPENDENCY-INVENTORY.md.
+
+- 0.5.5: Bound-specific Notes editing/placeholder/pixel typography and Done bar; local font attribution; independent PiP gesture persistence and chart bounds; safe landscape companion controls; controller mode and companion controller action. Emulator engine/input defaults and Agora transport are retained.

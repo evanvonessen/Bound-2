@@ -410,6 +410,9 @@
 		E8A7206B7421C6BC0900D58C /* FriendOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD57C331890EA530190F8FB0 /* FriendOnboarding.swift */; };
 		EDD98AC09003D9F4EC39FA89 /* BoundControlPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603F618C6D84AE0EE43FD052 /* BoundControlPlacement.swift */; };
 		EE19B3FE32D45413CAB52F5A /* BoundCompanionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B9C64D60692EA8EAC11ACE /* BoundCompanionPanel.swift */; };
+		EA6D6C6888DE48088B40234B /* Early GameBoy.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0518FF9D56C3450A9CA81DD6 /* Early GameBoy.ttf */; };
+		FAFC9B8D033F4C2291D93430 /* EARLY-GAMEBOY-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 7221F449D198453FBB429D8B /* EARLY-GAMEBOY-LICENSE.txt */; };
+		52559A4FB7BF496EAFA2972D /* BoundNotesFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3BBCDAA4472481390EC1254 /* BoundNotesFont.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1179,6 +1182,9 @@
 		E875C2DEF127D860254648FA /* BoundFrameCaptureGate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundFrameCaptureGate.swift; sourceTree = "<group>"; };
 		EAA7562AAABA52F743D74FFA /* BoundNotesStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoundNotesStore.swift; sourceTree = "<group>"; };
 		FCE7674E5643CDB43BC8ED32 /* DeltaOperatorWritebackToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeltaOperatorWritebackToast.swift; sourceTree = "<group>"; };
+		0518FF9D56C3450A9CA81DD6 /* Early GameBoy.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Early GameBoy.ttf"; sourceTree = "<group>"; };
+		7221F449D198453FBB429D8B /* EARLY-GAMEBOY-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSES/EARLY-GAMEBOY-LICENSE.txt; sourceTree = "SOURCE_ROOT"; };
+		E3BBCDAA4472481390EC1254 /* BoundNotesFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundNotesFont.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1332,6 +1338,7 @@
 				700B4229FD43D2D7CC485768 /* BoundAppearancePreferences.swift */,
 				CDE48615FD1B95F2AA4C6B72 /* BoundControlPlacementSkin.swift */,
 				264DD31E8EAE7DFDEF8DA6D5 /* BoundStockControllerSkin.swift */,
+				E3BBCDAA4472481390EC1254 /* BoundNotesFont.swift */,
 				852179CF8FCD1D6BB349E694 /* BoundControlPlacementEditor.swift */,
 				603F618C6D84AE0EE43FD052 /* BoundControlPlacement.swift */,
 				8469AA17D6924083971A9ECF /* BoundPiPGestures.swift */,
@@ -1805,6 +1812,8 @@
 				CA0101012F8E000100000001 /* CheatIcons.plist */,
 				BF02D5D91DDEBB3000A5E131 /* openvgdb.sqlite */,
 				D5D797E7298DC9E200738869 /* cheatbase.zip */,
+				7221F449D198453FBB429D8B /* EARLY-GAMEBOY-LICENSE.txt */,
+				0518FF9D56C3450A9CA81DD6 /* Early GameBoy.ttf */,
 				D53415A6298C78BC00FD67B1 /* Contributors.plist */,
 				D5E12AEC2D01163A000C7531 /* Profanity.txt */,
 				D5BE1BD62D0B9CBE00D2142E /* PatreonAPI.plist */,
@@ -2829,6 +2838,8 @@
 				E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */,
 				4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */,
 				29764E0164684F3CAA391DBD /* COPYING in Resources */,
+				FAFC9B8D033F4C2291D93430 /* EARLY-GAMEBOY-LICENSE.txt in Resources */,
+				EA6D6C6888DE48088B40234B /* Early GameBoy.ttf in Resources */,
 				D53BE5FF2E873E6B0012DE0F /* MicrochipIcon.icon in Resources */,
 				D5D797E9298DCC7300738869 /* cheatbase.zip in Resources */,
 				BFFA71E21AAC406100EE9DD1 /* Main.storyboard in Resources */,
@@ -3282,6 +3293,7 @@
 				72FDE3D87998618604D197B4 /* BoundAppearancePreferences.swift in Sources */,
 				76AFFCD28B307ADBADFF7D46 /* BoundControlPlacementSkin.swift in Sources */,
 				03452C62DFF4584B7406046D /* BoundStockControllerSkin.swift in Sources */,
+				52559A4FB7BF496EAFA2972D /* BoundNotesFont.swift in Sources */,
 				37DE7FC17EA1737BB1586114 /* BoundControlPlacementEditor.swift in Sources */,
 				EDD98AC09003D9F4EC39FA89 /* BoundControlPlacement.swift in Sources */,
 				A9D0C8D83FBEE28FB2158E9B /* BoundPiPGestures.swift in Sources */,
@@ -3617,7 +3629,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 171;
+				CURRENT_PROJECT_VERSION = 172;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -3638,7 +3650,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
-				MARKETING_VERSION = 0.5.4;
+				MARKETING_VERSION = 0.5.5;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "-DGLES_SILENCE_DEPRECATION";
@@ -3679,7 +3691,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 171;
+				CURRENT_PROJECT_VERSION = 172;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -3694,7 +3706,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
-				MARKETING_VERSION = 0.5.4;
+				MARKETING_VERSION = 0.5.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_CFLAGS = "-DGLES_SILENCE_DEPRECATION";
 				OTHER_SWIFT_FLAGS = "-Xfrontend -debug-time-function-bodies";

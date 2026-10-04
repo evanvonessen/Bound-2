@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import CoreText
 import DeltaCore
 import ZIPFoundation
 @testable import Delta
@@ -36,6 +37,59 @@ import ZIPFoundation
                 XCTAssertNotEqual(normal.pngData(), light.pressedImage(for: traits, preferredSize: .small)?.pngData())
             }
         }
+    }
+    func testBundledNotesPixelFontScalesAndRetainsUnicodeTextAndFallback() throws {
+        let filenames = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "UIAppFonts") as? [String])
+        XCTAssertTrue(filenames.contains("Early GameBoy.ttf"))
+        XCTAssertNotNil(Bundle.main.url(forResource: "Early GameBoy", withExtension: "ttf"))
+        XCTAssertNotNil(UIFont(name: BoundNotesFont.postScriptName, size: 16))
+        let normal = BoundNotesFont.uiFont(compatibleWith: UITraitCollection(preferredContentSizeCategory: .large))
+        let enlarged = BoundNotesFont.uiFont(compatibleWith: UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge))
+        XCTAssertEqual(normal.fontName, BoundNotesFont.postScriptName)
+        XCTAssertGreaterThan(enlarged.pointSize, normal.pointSize)
+        let text = "Notes café 漢字 🧑🏽‍💻"
+        let view = UITextView()
+        view.font = normal
+        view.text = text
+        XCTAssertEqual(view.text, text)
+        let base = CTFontCreateWithName(normal.fontName as CFString, normal.pointSize, nil)
+        let fallback = CTFontCreateForString(base, "漢" as CFString, CFRange(location: 0, length: 1))
+        XCTAssertNotEqual(CTFontCopyPostScriptName(fallback) as String, BoundNotesFont.postScriptName)
+        let emojiFallback = CTFontCreateForString(base, "😀" as CFString, CFRange(location: 0, length: 2))
+        XCTAssertNotEqual(CTFontCopyPostScriptName(emojiFallback) as String, BoundNotesFont.postScriptName)
+        var character: UniChar = 0x6F22
+        var glyph: CGGlyph = 0
+        XCTAssertTrue(CTFontGetGlyphsForCharacters(fallback, &character, &glyph, 1))
+        XCTAssertNotEqual(glyph, 0)
+    }
+    func testFreshNativeFeedbackDefaultsPreserveExplicitDisabledChoicesAcrossReopening() throws {
+        let defaults = UserDefaults.standard
+        let domain = try XCTUnwrap(Bundle.main.bundleIdentifier)
+        let keys = [Settings.Name.isButtonHapticFeedbackEnabled.rawValue,
+                    Settings.Name.isThumbstickHapticFeedbackEnabled.rawValue,
+                    BoundAppearancePreferences.screenLayoutKey]
+        let original = defaults.persistentDomain(forName: domain) ?? [:]
+        defer {
+            for key in keys {
+                if let value = original[key] { defaults.set(value, forKey: key) }
+                else { defaults.removeObject(forKey: key) }
+            }
+        }
+        // The hosted app registers the real native defaults during startup. Removing
+        // only persisted choices exposes that registration without rerunning startup
+        // (which also changes unrelated experimental/core preferences).
+        for key in keys.prefix(2) { defaults.removeObject(forKey: key) }
+        XCTAssertTrue(Settings.isButtonHapticFeedbackEnabled)
+        XCTAssertTrue(Settings.isThumbstickHapticFeedbackEnabled)
+        for key in keys.prefix(2) { XCTAssertNil(defaults.persistentDomain(forName: domain)?[key]) }
+        Settings.isButtonHapticFeedbackEnabled = false
+        Settings.isThumbstickHapticFeedbackEnabled = false
+        let reopened = UserDefaults()
+        for key in keys.prefix(2) { XCTAssertFalse(reopened.bool(forKey: key)) }
+        let preferences = BoundAppearancePreferences()
+        preferences.resetScreenLayout()
+        XCTAssertFalse(Settings.isButtonHapticFeedbackEnabled)
+        XCTAssertFalse(Settings.isThumbstickHapticFeedbackEnabled)
     }
     func testFeedbackUsesExistingDeltaSettingsAndNotifications() {
         let buttons = Settings.isButtonHapticFeedbackEnabled, sticks = Settings.isThumbstickHapticFeedbackEnabled
@@ -131,6 +185,14 @@ extension AppearanceIntegrationTests {
     }
 
     func testROMImportRejectsSymlinkAndTraversalButImportsNormalGBAAndZIP() async throws {
+        // Hosted tests can begin before the asynchronous launch condition finishes.
+        // Import needs the actual persistent store, not test-order timing.
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            DatabaseManager.shared.start { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
         let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: base) }

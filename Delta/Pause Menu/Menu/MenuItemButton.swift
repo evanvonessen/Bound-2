@@ -52,6 +52,9 @@ struct MenuItemButton: View
         .glassEffect(item.isSelected ? .clear.tint(.white.opacity(0.7)).interactive() : .clear.interactive(), in: .rect(cornerRadius: MenuItemButton.preferredCornerRadius))
         .glassEffectTransition(.materialize)
         .foregroundStyle(item.isSelected ? .black : .white)
+        .accessibilityIdentifier(item.accessibilityIdentifier ?? item.text)
+        .accessibilityValue(item.preservesSelectionOnReturn ? (item.isSelected ? "On" : "Off") : "")
+        .accessibilityAddTraits(item.isSelected ? .isSelected : [])
     }
     
     @ViewBuilder

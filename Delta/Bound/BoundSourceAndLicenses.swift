@@ -10,13 +10,14 @@ enum BoundSourceNotices {
         return "\(version) (\(build))"
     }
     enum Document: String, CaseIterable, Identifiable {
-        case agpl, modifications, dependencies
+        case agpl, modifications, dependencies, notesFont
         var id: String { rawValue }
         var title: String {
             switch self {
             case .agpl: return "GNU AGPL version 3"
             case .modifications: return "Bound 2 modifications"
             case .dependencies: return "Dependency inventory"
+            case .notesFont: return "Notes font license"
             }
         }
         var resource: String {
@@ -24,9 +25,10 @@ enum BoundSourceNotices {
             case .agpl: return "COPYING"
             case .modifications: return "BOUND2-MODIFICATIONS"
             case .dependencies: return "DEPENDENCY-INVENTORY"
+            case .notesFont: return "EARLY-GAMEBOY-LICENSE"
             }
         }
-        var fileExtension: String? { self == .agpl ? nil : "md" }
+        var fileExtension: String? { self == .agpl ? nil : self == .notesFont ? "txt" : "md" }
         func data(in bundle: Bundle = .main) -> Data? {
             guard let url = bundle.url(forResource: resource, withExtension: fileExtension) else { return nil }
             return try? Data(contentsOf: url)

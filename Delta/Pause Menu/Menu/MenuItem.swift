@@ -16,6 +16,8 @@ class MenuItem: NSObject
     var action: ((MenuItem) -> Void)
     
     var menuOptions: [Action]
+    var preservesSelectionOnReturn = false
+    var accessibilityIdentifier: String?
     
     @nonobjc var isSelected: Bool = false {
         didSet {

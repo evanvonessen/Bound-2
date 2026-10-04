@@ -31,7 +31,7 @@ class ControllerInputsViewController: UIViewController
     private lazy var managedObjectContext: NSManagedObjectContext = DatabaseManager.shared.newBackgroundContext()
     private var inputMappings = [System: GameControllerInputMapping]()
     
-    private let supportedActionInputs: [ActionInput] = [.quickSave, .quickLoad, .fastForward, .screenshot]
+    private let supportedActionInputs: [ActionInput] = [.quickSave, .quickLoad, .fastForward, .screenshot, .cycleBoundPanels]
     
     private var gameViewController: DeltaCore.GameViewController!
     private var actionsMenuViewController: GridMenuViewController!
@@ -263,6 +263,9 @@ private extension ControllerInputsViewController
                 text = NSLocalizedString("Screenshot", comment: "")
                 
             case .toggleFastForward, .reverseScreens: continue
+            case .cycleBoundPanels:
+                image = UIImage(systemName: "rectangle.2.swap") ?? #imageLiteral(resourceName: "Screenshot")
+                text = NSLocalizedString("Cycle Friend/Notes/Types", comment: "")
             }
             
             let item = MenuItem(text: text, image: image) { [unowned self] (item) in

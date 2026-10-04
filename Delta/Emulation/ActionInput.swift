@@ -6,6 +6,7 @@
 //  Copyright © 2017 Riley Testut. All rights reserved.
 //
 
+import Foundation
 import DeltaCore
 
 public extension GameControllerInputType
@@ -21,6 +22,20 @@ enum ActionInput: String
     case toggleFastForward
     case reverseScreens
     case screenshot
+    case cycleBoundPanels
+}
+
+/// One activation per physical hold, using the upstream controller/mapping pipeline.
+/// Weak keys do not retain disconnected controllers; release/disconnect re-arm the action.
+@MainActor
+final class BoundPanelActionRouter {
+    private let pressed = NSHashTable<AnyObject>.weakObjects()
+    func activate(controller: GameController, eligible: Bool, cycle: () -> Void) {
+        guard !pressed.contains(controller) else { return }
+        pressed.add(controller)
+        if eligible { cycle() }
+    }
+    func release(controller: GameController) { pressed.remove(controller) }
 }
 
 extension ActionInput: Input

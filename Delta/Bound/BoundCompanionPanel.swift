@@ -89,6 +89,8 @@ final class BoundCompanionCoordinator {
     private var initialScale = 1.0
     private var initialOpacity = 1.0
     private var liveOpacity: Double?
+    private var fadingContent: BoundPiPContent?
+    private var resizingContent: BoundPiPContent?
     #if DEBUG
     private let fixturePresenter = FriendSharingCanvasPresenter()
     #endif
@@ -98,6 +100,7 @@ final class BoundCompanionCoordinator {
         self.owner = owner
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--bound-ui-reset-layout") {
+            UserDefaults.standard.removeObject(forKey: BoundControllerModePreferences.key)
             for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("bound.delta.pip.v1.") || key.hasPrefix("bound.controls.v1.") { UserDefaults.standard.removeObject(forKey: key) }
         }
         #endif
@@ -137,11 +140,7 @@ final class BoundCompanionCoordinator {
         self.overlay = overlay; self.host = host
         let controls = BoundCompanionCycleButton()
         controls.cycle = { [weak self] in
-            guard let self else { return }
-            self.owner?.view.endEditing(true)
-            self.cancelInteractions()
-            self.state.selected = (self.state.selected + 1) % 3
-            self.state.hidden = false; self.state.refresh()
+            self?.cyclePanels()
         }
         owner.view.addSubview(controls); self.controls = controls
         sharing.$joined.combineLatest(sharing.$active).sink { [weak self] joined, active in
@@ -150,7 +149,13 @@ final class BoundCompanionCoordinator {
         gestures = BoundPiPGestures(view: owner.view, shouldReceive: { [weak self] touch in self?.shouldReceive(touch) ?? false },
             moved: { [weak self] phase, offset, endX in self?.move(phase, offset: offset, endX: endX) },
             magnified: { [weak self] phase, scale in self?.resize(phase, scale: scale) },
-            opacityChanged: { [weak self] phase, dy in self?.fade(phase, dy: dy) })
+            opacityChanged: { [weak self] phase, dy in self?.fade(phase, dy: dy) },
+            allowsOpacity: { [weak self] in self?.allowsOpacityGesture ?? false },
+            isCenteredTouch: { [weak self] touch in self?.isCenteredTouch(touch) ?? false },
+            isPiPTouch: { [weak self] touch in
+                guard let self, let overlay = self.overlay else { return false }
+                return overlay.bounds.contains(touch.location(in: overlay))
+            })
         bind(core: owner.emulatorCore, gameID: (owner.game as? Game)?.identifier ?? "")
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--bound-ui-friend-fixture") {
@@ -195,10 +200,10 @@ final class BoundCompanionCoordinator {
         if landscape {
             let game = AVMakeRect(aspectRatio: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2), insideRect: horizontal)
             let viewport = game
-            let base = CGSize(width: game.width * 0.36, height: game.width * 0.24)
+            let base = companionBaseSize(width: game.width * 0.36)
             let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
             self.geometry = geometry
-            let center = geometry.clampedCenter(from: state.preferences.corner, translation: translation)
+            let center = geometry.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
             var panel = CGRect(x: center.x - geometry.size.width / 2, y: center.y - geometry.size.height / 2, width: geometry.size.width, height: geometry.size.height)
             if isEditingNotes {
                 let available = bounds.inset(by: safeArea)
@@ -236,10 +241,10 @@ final class BoundCompanionCoordinator {
         let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
         let viewport = state.landscape ? game : game.intersection(bounds.inset(by: safeArea))
         guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
-        let base = CGSize(width: viewport.width * 0.36, height: viewport.width * 0.24)
+        let base = companionBaseSize(width: viewport.width * 0.36)
         let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
         self.geometry = geometry
-        let center = geometry.clampedCenter(from: state.preferences.corner, translation: translation)
+        let center = geometry.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
         var panel = CGRect(x: center.x - geometry.size.width / 2, y: center.y - geometry.size.height / 2, width: geometry.size.width, height: geometry.size.height)
         if isEditingNotes {
             let available = bounds.inset(by: safeArea)
@@ -271,10 +276,10 @@ final class BoundCompanionCoordinator {
         }.joined(separator: "|")
         #endif
         let layout = BoundPiPLayout(viewport: viewport,
-            baseSize: CGSize(width: viewport.width * 0.36, height: viewport.width * 0.24),
+            baseSize: companionBaseSize(width: viewport.width * 0.36),
             scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale, occupied: occupied)
         geometry = layout
-        let center = layout.clampedCenter(from: state.preferences.corner, translation: translation)
+        let center = layout.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
         overlay.frame = CGRect(x: center.x - layout.size.width / 2, y: center.y - layout.size.height / 2,
                                width: layout.size.width, height: layout.size.height)
         host?.view.frame = overlay.bounds
@@ -314,9 +319,15 @@ final class BoundCompanionCoordinator {
         let right = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == "r" }) })
         let rightFrame = right.map { owner.controllerView.convert($0.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view) }
         let menuHitSize = menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)).size
+        let boundPortrait = !state.landscape && BoundAppearancePreferences().screenLayout == .bound
+        let select = skin.items(for: traits)?.first { $0.inputs.allInputs.contains { $0.stringValue == "select" } }
+        let selectArtwork = boundPortrait && BoundAppearancePreferences().theme != .minimal
+            ? select.flatMap { skin.image(for: $0, traits: traits, preferredSize: .large)?.0 } : nil
         controls.configure(menuFrame: frame, controllerFrame: controller, landscape: state.landscape,
             minimal: BoundAppearancePreferences().theme == .minimal, content: state.content,
-            canvas: bounds.inset(by: safeArea), occupied: occupied, rightShoulderFrame: rightFrame, menuHitSize: menuHitSize)
+            canvas: bounds.inset(by: safeArea), occupied: occupied, rightShoulderFrame: rightFrame, menuHitSize: menuHitSize, boundPortrait: boundPortrait, selectArtwork: selectArtwork,
+            rightControlGutter: owner.boundLandscapeControlGutter(),
+            menuHitFrame: owner.controllerView.convert(menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view))
         owner.view.bringSubviewToFront(controls)
     }
     func presentFriends(from presenter: UIViewController) {
@@ -343,13 +354,38 @@ final class BoundCompanionCoordinator {
     }
     func cancelInteractions() {
         gestures?.cancel(); translation = .zero; pinchScale = 1; liveOpacity = nil
+        fadingContent = nil; resizingContent = nil
         owner?.controllerView.cancelTouchInputs()
+    }
+    func cyclePanels() {
+        owner?.view.endEditing(true)
+        cancelInteractions()
+        state.selected = (state.selected + 1) % 3
+        state.hidden = false; state.refresh()
+    }
+    var allowsOpacityGesture: Bool { state.landscape && state.content != .types && !isEditingNotes }
+    private func companionBaseSize(width: CGFloat) -> CGSize {
+        let image = state.landscape && state.content == .types ? UIImage(named: "PokemonTypeChart")?.size : nil
+        let aspect = image.map { $0.width / max(1, $0.height) } ?? 1.5
+        return CGSize(width: width, height: width / max(0.001, aspect))
+    }
+    private func isCenteredTouch(_ touch: UITouch) -> Bool {
+        guard let owner, let overlay else { return false }
+        let point = touch.location(in: owner.view)
+        let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
+        return game.insetBy(dx: game.width * 0.2, dy: game.height * 0.15).contains(point)
+            && !overlay.frame.contains(point)
     }
     private func shouldReceive(_ touch: UITouch) -> Bool {
         guard (state.landscape || (BoundAppearancePreferences().screenLayout == .delta && state.content != .types)), !isEditingNotes, !state.showingFriends, !state.showingSettings,
               let owner, let controls, !state.hidden else { return false }
         let p = touch.location(in: owner.view)
         guard !controls.frame.contains(p), owner.gameView.convert(owner.gameView.bounds, to: owner.view).contains(p) else { return false }
+        var target = touch.view
+        while let view = target, view !== owner.view {
+            if view is UITextView || view is UITextField || view is UIControl { return false }
+            target = view.superview
+        }
         let local = touch.location(in: owner.controllerView)
         if owner.controllerView.controlHitFrames.contains(where: { $0.contains(local) }) { return false }
         return true
@@ -358,27 +394,31 @@ final class BoundCompanionCoordinator {
         guard let geometry else { return }
         if phase == .changed { translation = offset }
         if phase == .ended {
-            state.hidden = geometry.hiddenSide(from: state.preferences.corner, translation: offset, endX: endX) != nil
-            state.preferences.corner = geometry.destination(from: state.preferences.corner, translation: offset)
+            let corner = state.preferences.corner(for: state.content)
+            state.hidden = geometry.hiddenSide(from: corner, translation: offset, endX: endX) != nil
+            state.preferences.setCorner(geometry.destination(from: corner, translation: offset), for: state.content)
             translation = .zero
         } else if phase == .cancelled || phase == .failed { translation = .zero }
         state.refresh()
     }
-    private func resize(_ phase: UIGestureRecognizer.State, scale: CGFloat) {
-        if phase == .began { initialScale = state.preferences.scale(for: state.content) }
-        if phase == .changed { pinchScale = min(1.4 / initialScale, max(0.65 / initialScale, Double(scale))) }
-        if phase == .ended { state.preferences.setScale(initialScale * Double(scale), for: state.content); pinchScale = 1 }
-        if phase == .cancelled || phase == .failed { pinchScale = 1 }
+    func resize(_ phase: UIGestureRecognizer.State, scale: CGFloat) {
+        if phase == .began { resizingContent = state.content; initialScale = state.preferences.scale(for: state.content); pinchScale = 1 }
+        guard let content = resizingContent, content == state.content else { pinchScale = 1; resizingContent = nil; return }
+        if phase == .changed, scale.isFinite { pinchScale = min(1.4 / initialScale, max(0.65 / initialScale, Double(scale))) }
+        if phase == .ended { state.preferences.setScale(initialScale * Double(pinchScale), for: content); pinchScale = 1; resizingContent = nil }
+        if phase == .cancelled || phase == .failed { pinchScale = 1; resizingContent = nil }
         state.refresh()
     }
     func fade(_ phase: UIGestureRecognizer.State, dy: CGFloat) {
-        if phase == .began { initialOpacity = state.preferences.opacity(for: state.content) }
-        if phase == .changed || phase == .ended {
+        guard allowsOpacityGesture else { liveOpacity = nil; fadingContent = nil; return }
+        if phase == .began { fadingContent = state.content; initialOpacity = state.preferences.opacity(for: state.content); liveOpacity = initialOpacity }
+        guard let content = fadingContent, content == state.content else { liveOpacity = nil; fadingContent = nil; return }
+        if phase == .changed {
             let height = (geometry?.size.height ?? 160) / CGFloat(state.preferences.scale(for: state.content))
             liveOpacity = BoundPiPPreferences.opacity(start: initialOpacity, verticalTranslation: dy, panelHeight: height)
-            if phase == .ended { state.preferences.setOpacity(liveOpacity ?? initialOpacity, for: state.content); liveOpacity = nil }
         }
-        if phase == .cancelled || phase == .failed { liveOpacity = nil }
+        if phase == .ended { state.preferences.setOpacity(liveOpacity ?? initialOpacity, for: content); liveOpacity = nil; fadingContent = nil }
+        if phase == .cancelled || phase == .failed { liveOpacity = nil; fadingContent = nil }
         state.refresh()
     }
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
@@ -435,7 +475,7 @@ struct BoundCompanionPanel: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .accessibilityLabel("Pokémon type effectiveness chart")
                         .accessibilityIdentifier("bound.type-chart")
-                } else { BoundTypeChartView(topInset: state.chartTopInset) }
+                } else { BoundTypeChartView(topInset: state.chartTopInset, constrainsPan: BoundAppearancePreferences().screenLayout == .bound) }
             }
         }.background(state.content == .types ? Color.black : Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: state.landscape ? 8 : state.content == .types ? 0 : 4))
@@ -476,8 +516,8 @@ private struct BoundPiPSettings: View {
                     } else { Text("No emulation package is active.") }
                 }
                 Section("Picture in picture") {
-                    Text("In landscape, drag any panel with one finger to move it, pinch with two fingers to resize, or slide three fingers vertically to change opacity. Swipe to an edge to hide; tap the companion button to show the next panel. Classic portrait keeps these gestures for Friend and Notes; the portrait Types panel zooms and pans its chart content.")
-                    ForEach(BoundPiPContent.allCases, id: \.rawValue) { content in
+                    Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to show the next panel. Portrait Types zooms and pans its chart content.")
+                    ForEach([BoundPiPContent.friend, .notes], id: \.rawValue) { content in
                         VStack(alignment: .leading) {
                             Text("\(content.rawValue.capitalized) transparency: \(Int(state.preferences.transparency(for: content) * 100))%")
                             Slider(value: Binding(get: { state.preferences.transparency(for: content) }, set: { state.preferences.setTransparency($0, for: content); state.refresh() }), in: 0...1, step: 0.05).accessibilityIdentifier("bound.\(content.rawValue)-transparency")
@@ -508,18 +548,40 @@ private struct BoundNotesEditor: View {
     @State private var text = ""
     @State private var status = ""
     @State private var readable = false
-    @FocusState private var editing: Bool
+    @State private var editing = false
+    @FocusState private var classicEditing: Bool
+    @AppStorage(BoundAppearancePreferences.screenLayoutKey) private var screenLayoutRaw = BoundAppearancePreferences.defaultScreenLayout.rawValue
     private let store = BoundNotesStore()
+    private var usesBoundArrangement: Bool { (BoundScreenLayout(rawValue: screenLayoutRaw) ?? BoundAppearancePreferences.defaultScreenLayout) == .bound }
     var body: some View {
         VStack(alignment: .leading) {
-            TextEditor(text: $text).focused($editing).disabled(!readable)
-                .accessibilityIdentifier("bound.notes-editor")
+            if usesBoundArrangement {
+                ZStack(alignment: .topLeading) {
+                    BoundNotesTextView(text: $text, editing: Binding(get: { editing }, set: { editing = $0 }))
+                        .disabled(!readable)
+                    if readable && text.isEmpty && !editing {
+                        Text("Tap to add notes")
+                            .font(BoundNotesFont.swiftUIFont()).foregroundStyle(.secondary)
+                            .padding(.horizontal, 5).padding(.vertical, 8)
+                            .allowsHitTesting(false)
+                            .accessibilityIdentifier("bound.notes-placeholder")
+                    }
+                }.accessibilityElement(children: .contain)
+            } else {
+                TextEditor(text: $text).focused($classicEditing).disabled(!readable)
+                    .accessibilityIdentifier("bound.notes-editor")
+            }
             if !status.isEmpty || editing {
                 HStack {
                     if !status.isEmpty { Text(status).font(.caption) }
                     Spacer()
-                    if editing { Button("Done") { editing = false } }
+                    if editing { Button("Done") { editing = false; classicEditing = false }
+                        .font(usesBoundArrangement ? BoundNotesFont.swiftUIFont(pointSize: 12, relativeTo: .callout) : .body)
+                        .frame(minWidth: usesBoundArrangement ? 44 : nil, minHeight: usesBoundArrangement ? 44 : nil) }
                 }
+                .padding(usesBoundArrangement ? 8 : 0)
+                .background(usesBoundArrangement ? Color.black : Color.clear)
+                .foregroundStyle(usesBoundArrangement ? Color.white : Color.primary)
             }
         }
         .onAppear {
@@ -531,8 +593,51 @@ private struct BoundNotesEditor: View {
             do { try store.write(next, game: gameID); status = "" }
             catch { status = "Could not save notes (16 KB limit)." }
         }
+        .onChange(of: classicEditing) { if !usesBoundArrangement { editing = $0 } }
+        .onChange(of: screenLayoutRaw) { _ in editing = false; classicEditing = false }
         .onChange(of: editing) { editingChanged($0) }
         .onDisappear { editingChanged(false) }
+    }
+}
+
+/// Bound-only editor: explicit UIKit traits disable both correction and spelling underlines.
+/// The native Delta arrangement continues to use its existing SwiftUI TextEditor.
+struct BoundNotesTextView: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var editing: Bool
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.delegate = context.coordinator
+        view.font = BoundNotesFont.uiFont()
+        view.adjustsFontForContentSizeCategory = true
+        view.textColor = .label
+        view.backgroundColor = .systemBackground
+        view.autocorrectionType = .no
+        view.spellCheckingType = .no
+        view.accessibilityLabel = "Notes"
+        view.accessibilityIdentifier = "bound.notes-editor"
+        return view
+    }
+
+    func updateUIView(_ view: UITextView, context: Context) {
+        context.coordinator.parent = self
+        view.isEditable = context.environment.isEnabled
+        view.isSelectable = context.environment.isEnabled
+        view.isUserInteractionEnabled = context.environment.isEnabled
+        // Avoid disturbing the selection or marked text during ordinary typing.
+        if view.text != text { view.text = text }
+        if !editing && view.isFirstResponder { view.resignFirstResponder() }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: BoundNotesTextView
+        init(_ parent: BoundNotesTextView) { self.parent = parent }
+        func textViewDidBeginEditing(_ textView: UITextView) { if !parent.editing { parent.editing = true } }
+        func textViewDidChange(_ textView: UITextView) { parent.text = textView.text }
+        func textViewDidEndEditing(_ textView: UITextView) { if parent.editing { parent.editing = false } }
     }
 }
 

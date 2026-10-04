@@ -102,7 +102,7 @@ extension GridMenuViewController
         {
             UIView.animate(withDuration: 0.2) {
                 let item = self.items[indexPath.item]
-                item.isSelected = !item.isSelected
+                if !item.preservesSelectionOnReturn { item.isSelected = !item.isSelected }
             }
         }
     }
@@ -119,6 +119,9 @@ private extension GridMenuViewController
         cell.imageView.contentMode = .center
         cell.imageView.layer.cornerRadius = 16.0
         
+        cell.accessibilityIdentifier = pauseItem.accessibilityIdentifier
+        cell.accessibilityValue = pauseItem.preservesSelectionOnReturn ? (pauseItem.isSelected ? "On" : "Off") : nil
+        cell.accessibilityTraits = pauseItem.preservesSelectionOnReturn && pauseItem.isSelected ? [.button, .selected] : [.button]
         cell.textLabel.text = pauseItem.text
         cell.textLabel.textColor = self.view.tintColor
         

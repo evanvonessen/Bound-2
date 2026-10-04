@@ -22,6 +22,7 @@ class GridCollectionViewLayout: UICollectionViewFlowLayout
     
     // If only one row, distribute the items equally horizontally
     var usesEqualHorizontalSpacingDistributionForSingleRow = false
+    var centersIncompleteRows = false
     
     private var contentInset: UIEdgeInsets {
         guard let collectionView = self.collectionView else { return .zero }
@@ -151,6 +152,18 @@ class GridCollectionViewLayout: UICollectionViewFlowLayout
             }
         }
         
+        if centersIncompleteRows, let collectionView, maximumItemsPerRow > 0 {
+            let count = collectionView.numberOfItems(inSection: 0)
+            let tailCount = count % maximumItemsPerRow
+            let tail = layoutAttributes.filter { $0.representedElementCategory == .cell && $0.indexPath.section == 0 && $0.indexPath.item >= count-tailCount }
+                .sorted { $0.indexPath.item < $1.indexPath.item }
+            if tailCount > 0, tail.count == tailCount {
+                let width = tail.reduce(CGFloat.zero) { $0+$1.frame.width } + CGFloat(tailCount-1)*interitemSpacing
+                var x = contentInset.left+(contentWidth-width)/2
+                for item in tail { item.frame.origin.x = x; x += item.frame.width+interitemSpacing }
+            }
+        }
+
         for attributes in layoutAttributes where attributes.representedElementCategory == .cell
         {
             // Update cached attributes for layoutAttributesForItem(at:)

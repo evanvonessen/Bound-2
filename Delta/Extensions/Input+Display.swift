@@ -281,6 +281,7 @@ extension Input
             case .toggleFastForward: return NSLocalizedString("Toggle Fast Forward", comment: "")
             case .reverseScreens: return NSLocalizedString("Reverse Screens", comment: "")
             case .screenshot: return NSLocalizedString("Screenshot", comment: "")
+            case .cycleBoundPanels: return NSLocalizedString("Cycle Friend/Notes/Types", comment: "")
             }
             
         default: break
@@ -423,6 +424,7 @@ extension Input
             case .toggleFastForward: return "forward"
             case .reverseScreens: return "rectangle.2.swap"
             case .screenshot: return "camera"
+            case .cycleBoundPanels: return "rectangle.2.swap"
             }
             
         default: return "questionmark.circle"

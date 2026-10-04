@@ -18,7 +18,13 @@ struct ContainerRelativeGrid: Layout
     
     var horizontalSpacing: Double = 15
     var verticalSpacing: Double = 15
+    var centersIncompleteRows = false
     
+    static func incompleteRowOffset(columns: Int, count: Int, itemWidth: Double, spacing: Double) -> Double {
+        guard columns > 0, count > 0, count < columns else { return 0 }
+        return Double(columns-count)*(itemWidth+spacing)/2
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize
     {
         guard !subviews.isEmpty else { return .zero }
@@ -59,7 +65,11 @@ struct ContainerRelativeGrid: Layout
             let offsetX = (self.pageWidth - gridWidth) / 2.0
             let offsetY = (proposedHeight - gridHeight) / 2.0
             
-            let x = pageOriginX + offsetX + Double(column) * (itemSize.width + self.horizontalSpacing)
+            let countOnPage = min(itemsPerPage, subviews.count-page*itemsPerPage)
+            let countOnRow = min(columns, countOnPage-row*columns)
+            let rowOffset = centersIncompleteRows ? Self.incompleteRowOffset(columns: columns, count: countOnRow,
+                itemWidth: itemSize.width, spacing: horizontalSpacing) : 0
+            let x = pageOriginX + offsetX + rowOffset + Double(column) * (itemSize.width + self.horizontalSpacing)
             let y = bounds.minY + offsetY + Double(row) * (itemSize.height + self.verticalSpacing)
             
             subview.place(at: CGPoint(x: x, y: y), proposal: placementProposal)

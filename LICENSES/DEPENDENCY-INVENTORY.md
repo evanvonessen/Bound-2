@@ -135,3 +135,16 @@ The user made [the Bound 2 source repository](https://github.com/evanvonessen/Bo
 The separate archive audit checked 22 pinned Agora 4.6.4 / AgoraInfra 1.3.5 downloads against their package checksums. No SDK license grant was identified inside those archives; AgoraAtomicOps.h and other SDK headers state proprietary/prior-written-permission terms. Seven Agora frameworks are dynamically loaded by the app. No Agora-specific Delta linking exception or project agreement was identified. Public distribution therefore remains gated on explicit compatible permission or a separately authorized replacement; this change does not replace Agora or make a legal determination.
 
 Two expired 2013 SDL WinRT test-signing PFX files (loopwave/testthread VS2012 TemporaryKey) exactly matched the pinned upstream fixtures and were not live Bound credentials. They are omitted from the current snapshot because they are unused by the iOS build. Their paths are recorded in vendored-sources.json exclusions; the upstream revision and existing history are preserved.
+
+## Notes pixel font (added 2026-10-04)
+
+`Resources/Early GameBoy.ttf` is the exact unmodified font from the
+[author's DaFont page](https://www.dafont.com/early-gameboy.font), credited there
+to Jimmy Campbell. Its name table records copyright LDEJRuff 2012, Creative
+Commons Attribution Share Alike and the CC BY-SA 3.0 license URI.
+SHA-256: `fb84ef1d7f837c5993b80b9a3319284dc49883394d0def0c9c999b51b4683d13`.
+The unchanged font retains that license separately from application source.
+Attribution, provenance and full license are in
+[EARLY-GAMEBOY-LICENSE.txt](EARLY-GAMEBOY-LICENSE.txt), also bundled in the app.
+No conversion, subsetting or author endorsement is claimed. Normal text rendering
+uses system Unicode fallback; no global font installation or font service is used.

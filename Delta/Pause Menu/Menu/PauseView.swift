@@ -99,7 +99,7 @@ struct PauseView: View
         GeometryReader { geometry in
             ScrollView(.horizontal) {
                 GlassEffectContainer {
-                    ContainerRelativeGrid(pageWidth: geometry.size.width, itemWidth: MenuItemButton.preferredSize.width) {
+                    ContainerRelativeGrid(pageWidth: geometry.size.width, itemWidth: MenuItemButton.preferredSize.width, centersIncompleteRows: items.count == 7) {
                         if !isHidden
                         {
                             ForEach(items, id: \.text) { item in

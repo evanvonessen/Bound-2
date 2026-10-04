@@ -28,13 +28,15 @@ struct BoundEmulationDetails: Equatable {
 
 /// Appearance and screen arrangement are independent preferences. Touch feedback uses Delta's existing settings.
 final class BoundAppearancePreferences {
+    static let defaultScreenLayout: BoundScreenLayout = .bound
+    static let defaultTheme: BoundTheme = .delta
     static let screenLayoutKey = "bound.delta.screen-layout.v1"
     static let themeKey = "bound.delta.appearance.theme.v1"
     static let didChangeNotification = Notification.Name("BoundAppearanceDidChange")
     private let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
     var theme: BoundTheme {
-        get { BoundTheme(rawValue: defaults.string(forKey: Self.themeKey) ?? "") ?? .delta }
+        get { BoundTheme(rawValue: defaults.string(forKey: Self.themeKey) ?? "") ?? Self.defaultTheme }
         set {
             guard defaults.string(forKey: Self.themeKey) != newValue.rawValue else { return }
             defaults.set(newValue.rawValue, forKey: Self.themeKey)
@@ -42,13 +44,13 @@ final class BoundAppearancePreferences {
         }
     }
     var screenLayout: BoundScreenLayout {
-        get { BoundScreenLayout(rawValue: defaults.string(forKey: Self.screenLayoutKey) ?? "") ?? .delta }
+        get { BoundScreenLayout(rawValue: defaults.string(forKey: Self.screenLayoutKey) ?? "") ?? Self.defaultScreenLayout }
         set {
             guard defaults.string(forKey: Self.screenLayoutKey) != newValue.rawValue else { return }
             defaults.set(newValue.rawValue, forKey: Self.screenLayoutKey)
             NotificationCenter.default.post(name: Self.didChangeNotification, object: self)
         }
     }
-    func resetScreenLayout() { screenLayout = .delta }
-    func reset() { theme = .delta }
+    func resetScreenLayout() { screenLayout = Self.defaultScreenLayout }
+    func reset() { theme = Self.defaultTheme }
 }

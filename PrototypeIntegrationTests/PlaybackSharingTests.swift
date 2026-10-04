@@ -284,12 +284,14 @@ extension PlaybackSharingTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = BoundPiPPreferences(defaults: defaults)
         let coordinator = BoundCompanionCoordinator(state: BoundCompanionState(preferences: preferences))
+        coordinator.state.landscape = true
         coordinator.fade(.began, dy: 0)
         coordinator.fade(.changed, dy: 80)
         XCTAssertEqual(preferences.opacity(for: .friend), 1, "Preview must not write preferences")
         coordinator.cancelInteractions()
         XCTAssertEqual(preferences.opacity(for: .friend), 1)
         coordinator.fade(.began, dy: 0)
+        coordinator.fade(.changed, dy: 80)
         coordinator.fade(.ended, dy: 80)
         XCTAssertEqual(preferences.opacity(for: .friend), 0.5)
         coordinator.fade(.began, dy: 0)
@@ -298,10 +300,121 @@ extension PlaybackSharingTests {
         XCTAssertEqual(preferences.opacity(for: .friend), 0.5)
         XCTAssertEqual(BoundPiPPreferences(defaults: defaults).opacity(for: .friend), 0.5)
     }
+    func testPiPReleaseKeepsLastPreviewAndPanelPreferencesAcrossRestart() throws {
+        let suite = "BoundPiPRelease." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = BoundPiPPreferences(defaults: defaults)
+        let state = BoundCompanionState(preferences: preferences)
+        state.landscape = true
+        let coordinator = BoundCompanionCoordinator(state: state)
+        for (selected, content) in [(0, BoundPiPContent.friend), (1, .notes), (2, .types)] {
+            state.selected = selected
+            coordinator.resize(.began, scale: 1)
+            coordinator.resize(.changed, scale: 1.2 + CGFloat(selected) * 0.1)
+            // Lifting may report a default value. Commit the last preview, exactly once.
+            coordinator.resize(.ended, scale: 1)
+            coordinator.resize(.ended, scale: 0.1)
+            XCTAssertEqual(preferences.scale(for: content), 1.2 + Double(selected) * 0.1, accuracy: 0.0001)
+            coordinator.resize(.began, scale: 1)
+            coordinator.resize(.changed, scale: 0.2)
+            coordinator.resize(.cancelled, scale: 0.2)
+            XCTAssertEqual(preferences.scale(for: content), 1.2 + Double(selected) * 0.1, accuracy: 0.0001)
+        }
+        for (selected, content) in [(0, BoundPiPContent.friend), (1, .notes)] {
+            state.selected = selected
+            coordinator.fade(.began, dy: 0)
+            coordinator.fade(.changed, dy: 40)
+            coordinator.fade(.ended, dy: 0)
+            coordinator.fade(.ended, dy: 160)
+            XCTAssertLessThan(preferences.opacity(for: content), 1)
+            let stored = preferences.opacity(for: content)
+            coordinator.fade(.began, dy: 0)
+            coordinator.fade(.changed, dy: -40)
+            coordinator.cancelInteractions() // Rotation/game exit must abandon preview.
+            coordinator.fade(.ended, dy: -40)
+            XCTAssertEqual(preferences.opacity(for: content), stored)
+        }
+        state.selected = 2
+        XCTAssertFalse(coordinator.allowsOpacityGesture)
+        coordinator.fade(.began, dy: 0); coordinator.fade(.changed, dy: 80); coordinator.fade(.ended, dy: 0)
+        XCTAssertEqual(preferences.opacity(for: .types), 1)
+        state.selected = 0; state.landscape = false
+        XCTAssertFalse(coordinator.allowsOpacityGesture)
+        let prior = preferences.opacity(for: .friend)
+        coordinator.fade(.began, dy: 0); coordinator.fade(.changed, dy: 80); coordinator.fade(.ended, dy: 0)
+        XCTAssertEqual(preferences.opacity(for: .friend), prior)
+        let restarted = BoundPiPPreferences(defaults: defaults)
+        for content in BoundPiPContent.allCases {
+            XCTAssertEqual(restarted.scale(for: content), preferences.scale(for: content))
+            XCTAssertEqual(restarted.opacity(for: content), preferences.opacity(for: content))
+        }
+    }
 }
 
 
 extension PlaybackSharingTests {
+    func testControllerModeCancellationPreservesActualNativeExternalHeldAndSustainedA() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "BoundDiagnostic", withExtension: "gba"))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let core = try XCTUnwrap(EmulatorCore(game: FixtureGame(fileURL: fixture, gameSaveURL: directory.appendingPathComponent("fixture.sav")), options: [.metal: true]))
+        let touch = ControllerView(), external = BoundHeldExternalController()
+        touch.playerIndex = 0
+        let touchA = AnyInput(stringValue: "a", intValue: nil, type: .controller(.controllerSkin))
+        var touchMapping = DeltaCore.GameControllerInputMapping(gameControllerInputType: .controllerSkin)
+        touchMapping.set(StandardGameControllerInput.a, forControllerInput: touchA)
+        var externalMapping = DeltaCore.GameControllerInputMapping(gameControllerInputType: .mfi)
+        externalMapping.set(StandardGameControllerInput.a, forControllerInput: MFiGameController.Input.a)
+        touch.addReceiver(core, inputMapping: touchMapping)
+        external.addReceiver(core, inputMapping: externalMapping)
+        var waiting: XCTestExpectation?
+        var expectedPressed = true
+        var consecutive = 0
+        let tap = BoundDeltaFrameTap { frame in
+            guard let expectation = waiting else { return }
+            // The original fixture's ten bottom indicators expose actual KEYINPUT.
+            // Probe both bitmap orientations; its animated top stripe is never yellow/gray.
+            let offsets = [15, 144].map { ($0 * 240 + 12) * 4 }
+            let matches = offsets.contains { offset in
+                let r = Int(frame.rgba[offset]), g = Int(frame.rgba[offset + 1]), b = Int(frame.rgba[offset + 2])
+                return expectedPressed ? r > 200 && g > 200 && b < 50
+                    : (30...110).contains(r) && abs(r-g) < 5 && abs(r-b) < 5
+            }
+            consecutive = matches ? consecutive + 1 : 0
+            if consecutive >= 3 { waiting = nil; expectation.fulfill() }
+        }
+        tap.setEnabled(true)
+        core.updateHandler = { tap.receive($0) }
+        defer {
+            waiting = nil; tap.setEnabled(false); _ = core.stop()
+            touch.removeReceiver(core); external.removeReceiver(core)
+        }
+        XCTAssertTrue(core.start()); core.audioManager.isEnabled = false
+        for sustained in [false, true] {
+            external.activate(MFiGameController.Input.a)
+            if sustained { external.sustain(MFiGameController.Input.a) }
+            touch.activate(touchA)
+            expectedPressed = true; consecutive = 0
+            let initiallyHeld = expectation(description: "Native A is held by both controllers")
+            waiting = initiallyHeld
+            await fulfillment(of: [initiallyHeld], timeout: 3)
+            BoundControllerModeSkin.cancelTouchInputs(in: touch, preservingExternalInputsFrom: [external], emulatorCore: core)
+            XCTAssertTrue(touch.activatedInputs.isEmpty)
+            XCTAssertFalse(external.activatedInputs.isEmpty)
+            consecutive = 0
+            let stillHeld = expectation(description: "Actual native KEYINPUT A stays held after virtual cancellation")
+            waiting = stillHeld
+            await fulfillment(of: [stillHeld], timeout: 3)
+            if sustained { external.unsustain(MFiGameController.Input.a) }
+            else { external.deactivate(MFiGameController.Input.a) }
+            expectedPressed = false; consecutive = 0
+            let released = expectation(description: "Actual native KEYINPUT A releases with external controller")
+            waiting = released
+            await fulfillment(of: [released], timeout: 3)
+        }
+    }
     func testNativeRepeatedStartPauseResumeStopAcknowledgesEveryTransition() async throws {
         let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "BoundDiagnostic", withExtension: "gba"))
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -326,6 +439,13 @@ extension PlaybackSharingTests {
         DispatchQueue.concurrentPerform(iterations: 2) { _ in stops.record(core.stop()) }
         XCTAssertEqual(stops.count, 1); XCTAssertEqual(core.state, .stopped)
     }
+}
+
+private final class BoundHeldExternalController: NSObject, GameController {
+    let name = "Bound native held-input regression"
+    var playerIndex: Int? = 0
+    let inputType = GameControllerInputType.mfi
+    var defaultInputMapping: GameControllerInputMappingProtocol? { nil }
 }
 
 @MainActor private final class DisposalProbeTransport: FriendSharingTransport {

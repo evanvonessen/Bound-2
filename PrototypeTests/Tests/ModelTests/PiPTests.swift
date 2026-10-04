@@ -3,6 +3,29 @@ import CoreGraphics
 import XCTest
 @testable import Models
 final class PiPTests: XCTestCase {
+    @MainActor func testLegacyCornerMigratesPerPanelAndTypesIgnoresLegacyTransparency() throws {
+        let suite = "BoundPiPIndependent." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("bottomLeft", forKey: "bound.delta.pip.v1.corner")
+        defaults.set(0.2, forKey: "bound.delta.pip.v1.types.opacity")
+        let preferences = BoundPiPPreferences(defaults: defaults)
+        for content in BoundPiPContent.allCases { XCTAssertEqual(preferences.corner(for: content), .bottomLeft) }
+        preferences.setCorner(.topLeft, for: .friend)
+        preferences.setCorner(.bottomRight, for: .notes)
+        preferences.setCorner(.topRight, for: .types)
+        preferences.setOpacity(0.3, for: .friend)
+        preferences.setOpacity(0.6, for: .notes)
+        preferences.setOpacity(0, for: .types)
+        let relaunched = BoundPiPPreferences(defaults: defaults)
+        XCTAssertEqual(relaunched.corner(for: .friend), .topLeft)
+        XCTAssertEqual(relaunched.corner(for: .notes), .bottomRight)
+        XCTAssertEqual(relaunched.corner(for: .types), .topRight)
+        XCTAssertEqual(relaunched.opacity(for: .friend), 0.3)
+        XCTAssertEqual(relaunched.opacity(for: .notes), 0.6)
+        XCTAssertEqual(relaunched.opacity(for: .types), 1)
+        XCTAssertEqual(relaunched.transparency(for: .types), 0)
+    }
     @MainActor func testPreferencesPersistIndependentContentAndSharedCorner() throws {
         let suite = "BoundPiPTests." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

@@ -6,6 +6,8 @@ import UIKit
     func testExpandedViewportInitiallyClearsIslandAndShowsChartBottom() throws {
         let scroll = BoundPortraitChartScrollView(frame: CGRect(x: 0, y: 0, width: 402, height: 240))
         scroll.topInset = 62
+        XCTAssertFalse(scroll.constrainsPan, "Classic retains its existing scroll behavior")
+        XCTAssertTrue(scroll.bounces)
         scroll.layoutIfNeeded()
         let image = try XCTUnwrap(scroll.subviews.compactMap { $0 as? UIImageView }.first)
         XCTAssertEqual(scroll.bounds.height, 240)
@@ -54,4 +56,58 @@ import UIKit
         XCTAssertEqual(reopened.zoomScale, scroll.zoomScale, accuracy: 0.0001)
         XCTAssertEqual(reopened.contentOffset, scroll.contentOffset)
     }
+    func testBoundMinimumFitHasFixedBottomAlignmentAndNoPanOverscroll() throws {
+        let scroll = BoundPortraitChartScrollView(frame: CGRect(x: 0, y: 0, width: 220, height: 390))
+        scroll.topInset = 62
+        scroll.constrainsPan = true
+        scroll.layoutIfNeeded()
+        let image = try XCTUnwrap(scroll.subviews.compactMap { $0 as? UIImageView }.first)
+        XCTAssertFalse(scroll.bounces)
+        XCTAssertTrue(scroll.bouncesZoom, "Pan bounds must retain UIKit's independent elastic pinch")
+        scroll.setZoomScale(scroll.minimumZoomScale, animated: false)
+        let fixed = scroll.contentOffset
+        XCTAssertEqual(image.frame.height, 220, accuracy: 0.1)
+        XCTAssertEqual(image.frame.maxY - fixed.y, scroll.bounds.height, accuracy: 0.1)
+        for attempt in [CGPoint(x: -1000, y: -1000), CGPoint(x: 1000, y: 1000)] {
+            scroll.setContentOffset(attempt, animated: false)
+            XCTAssertEqual(scroll.contentOffset.x, fixed.x, accuracy: 0.1)
+            XCTAssertEqual(scroll.contentOffset.y, fixed.y, accuracy: 0.1)
+        }
+        scroll.frame = CGRect(x: 0, y: 0, width: 320, height: 180)
+        scroll.setNeedsLayout(); scroll.layoutIfNeeded()
+        XCTAssertEqual(image.frame.maxY - scroll.contentOffset.y, 180, accuracy: 0.1)
+        let rotatedOffset = scroll.contentOffset
+        scroll.setContentOffset(CGPoint(x: 1000, y: -1000), animated: false)
+        XCTAssertEqual(scroll.contentOffset, rotatedOffset)
+    }
+
+    func testBoundZoomedPanClampsEachOverflowingAxisWithoutBlankEdges() throws {
+        let scroll = BoundPortraitChartScrollView(frame: CGRect(x: 0, y: 0, width: 220, height: 390))
+        scroll.constrainsPan = true
+        scroll.layoutIfNeeded()
+        // A width-only overflow must not enable vertical movement.
+        scroll.setZoomScale(scroll.minimumZoomScale * 1.3, animated: false)
+        let fixedY = -(scroll.bounds.height - scroll.contentSize.height)
+        XCTAssertGreaterThan(scroll.contentSize.width, scroll.bounds.width)
+        XCTAssertLessThan(scroll.contentSize.height, scroll.bounds.height)
+        scroll.setContentOffset(CGPoint(x: 1000, y: 1000), animated: false)
+        XCTAssertEqual(scroll.contentOffset.x, scroll.contentSize.width - scroll.bounds.width, accuracy: 0.1)
+        XCTAssertEqual(scroll.contentOffset.y, fixedY, accuracy: 0.1)
+        scroll.setZoomScale(scroll.minimumZoomScale * 3, animated: false)
+        let maximum = CGPoint(x: scroll.contentSize.width - scroll.bounds.width,
+                              y: scroll.contentSize.height - scroll.bounds.height)
+        XCTAssertGreaterThan(maximum.x, 0)
+        XCTAssertGreaterThan(maximum.y, 0)
+        scroll.setContentOffset(CGPoint(x: -1000, y: -1000), animated: false)
+        XCTAssertEqual(scroll.contentOffset, .zero)
+        scroll.setContentOffset(CGPoint(x: 1000, y: 1000), animated: false)
+        XCTAssertEqual(scroll.contentOffset.x, maximum.x, accuracy: 0.1)
+        XCTAssertEqual(scroll.contentOffset.y, maximum.y, accuracy: 0.1)
+        let interior = CGPoint(x: maximum.x / 2, y: maximum.y / 2)
+        scroll.setContentOffset(interior, animated: false)
+        XCTAssertEqual(scroll.contentOffset, interior)
+        scroll.setZoomScale(scroll.minimumZoomScale, animated: false)
+        XCTAssertEqual(scroll.contentOffset.y, -(scroll.bounds.height - scroll.contentSize.height), accuracy: 0.1)
+    }
+
 }

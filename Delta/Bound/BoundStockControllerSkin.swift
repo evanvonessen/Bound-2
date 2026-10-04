@@ -6,12 +6,15 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
     let base: ControllerSkinProtocol
     let canvasSize: CGSize
     let contentInsets: UIEdgeInsets
-    init(base: ControllerSkinProtocol, canvasSize: CGSize, contentInsets: UIEdgeInsets = .zero) {
+    /// Bound landscape only, expressed in the native controller's pixel coordinates.
+    let boundLandscapeGutter: CGRect?
+    init(base: ControllerSkinProtocol, canvasSize: CGSize, contentInsets: UIEdgeInsets = .zero, boundLandscapeGutter: CGRect? = nil) {
         self.base = base; self.canvasSize = canvasSize; self.contentInsets = contentInsets
+        self.boundLandscapeGutter = boundLandscapeGutter
     }
     private var stock: Bool { ["gba", "gbc", "nes", "snes", "n64", "genesis", "ds"].contains { base.identifier == "com.delta." + $0 + ".standard" } }
     var name: String { base.name }
-    var identifier: String { base.identifier + ".bound-stock.v2." + String(describing: canvasSize) + String(describing: contentInsets) }
+    var identifier: String { base.identifier + ".bound-stock.v2." + String(describing: canvasSize) + String(describing: contentInsets) + String(describing: boundLandscapeGutter) }
     var gameType: GameType { base.gameType }
     var isDebugModeEnabled: Bool { base.isDebugModeEnabled }
     func supports(_ traits: DeltaCore.ControllerSkin.Traits) -> Bool { base.supports(traits) }
@@ -23,6 +26,30 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
         return original.map { item in
             guard Self.hasInput("menu", item) else { return item }
             var result = item
+            if let gutter = boundLandscapeGutter,
+               let right = original.first(where: { Self.hasInput("r", $0) }) {
+                let toPixels = CGAffineTransform(scaleX: canvasSize.width, y: canvasSize.height)
+                let nativeVisual = item.frame.applying(toPixels)
+                let nativeHit = item.extendedFrame.applying(toPixels)
+                let slot = gutter.width >= 48 ? gutter.insetBy(dx: 2, dy: 0) : gutter
+                let visualScale = min(1, slot.width/nativeVisual.width)
+                let visualSize = CGSize(width: nativeVisual.width*visualScale, height: nativeVisual.height*visualScale)
+                let hitSize = CGSize(width: min(max(44, nativeHit.width), slot.width), height: max(44, nativeHit.height))
+                // Preserve stock art where it fits. On shorter phones, cap just
+                // this Menu art to the gutter without changing video or game inputs.
+                if hitSize.width >= max(44, visualSize.width), slot.height >= hitSize.height {
+                    let obstacles = original.filter { !Self.hasInput("menu", $0) }.map { $0.extendedFrame.applying(toPixels) }
+                    let belowShoulder = right.extendedFrame.applying(toPixels).maxY + 10 + hitSize.height/2
+                    if let hit = Self.gutterFrame(preferredY: belowShoulder, size: hitSize, gutter: slot, occupied: obstacles) {
+                        let frame = CGRect(x: hit.midX-visualSize.width/2, y: hit.midY-visualSize.height/2, width: visualSize.width, height: visualSize.height)
+                        let normalized = CGAffineTransform(scaleX: 1/canvasSize.width, y: 1/canvasSize.height)
+                        result.frame = frame.applying(normalized)
+                        result.extendedFrame = hit.applying(normalized)
+                        return result
+                    }
+                }
+                // Unsupported/no-space layouts retain the usable native Menu.
+            }
             let topMargin = item.frame.minY - item.extendedFrame.minY
             let target = CGPoint(x: left.frame.midX, y: left.extendedFrame.maxY + topMargin + 10 / canvasSize.height)
             let dx = target.x - item.frame.midX, dy = target.y - item.frame.minY
@@ -41,6 +68,25 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
             return result
         }
     }
+    /// Keep the gutter's outer edge and select the nearest clear vertical slot.
+    static func gutterFrame(preferredY: CGFloat, size: CGSize, gutter: CGRect, occupied: [CGRect]) -> CGRect? {
+        guard gutter.minX.isFinite, gutter.minY.isFinite, gutter.width.isFinite, gutter.height.isFinite,
+              size.width.isFinite, size.height.isFinite, preferredY.isFinite,
+              size.width >= 44, size.height >= 44, gutter.width >= size.width, gutter.height >= size.height else { return nil }
+        let half = size.height/2
+        func clampedY(_ y: CGFloat) -> CGFloat { min(max(y, gutter.minY+half), gutter.maxY-half) }
+        let initial = clampedY(preferredY)
+        var candidates = [initial, gutter.minY+half, gutter.maxY-half]
+        for rect in occupied where !rect.isNull && !rect.isEmpty {
+            candidates += [rect.minY-half-2, rect.maxY+half+2]
+        }
+        candidates = candidates.map(clampedY).sorted { abs($0-initial) < abs($1-initial) }
+        for y in candidates {
+            let frame = CGRect(x: gutter.maxX-size.width, y: y-half, width: size.width, height: size.height)
+            if !occupied.contains(where: { frame.intersects($0) }) { return frame }
+        }
+        return nil
+    }
     private static func hasInput(_ name: String, _ item: DeltaCore.ControllerSkin.Item) -> Bool { item.inputs.allInputs.contains { $0.stringValue == name } }
     private func artwork(_ image: UIImage?, traits: DeltaCore.ControllerSkin.Traits) -> UIImage? {
         guard stock, let image else { return image }
@@ -56,7 +102,9 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
                 context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
                 context.cgContext.fill(old.insetBy(dx: -2, dy: -2)); context.cgContext.restoreGState()
                 context.cgContext.saveGState(); context.cgContext.clip(to: destination)
-                image.draw(at: CGPoint(x: destination.minX-old.minX, y: destination.minY-old.minY))
+                let sx = destination.width/old.width, sy = destination.height/old.height
+                image.draw(in: CGRect(x: destination.minX-old.minX*sx, y: destination.minY-old.minY*sy,
+                    width: size.width*sx, height: size.height*sy))
                 context.cgContext.restoreGState()
             }
             if traits.orientation == .portrait && traits.device == .iphone {
@@ -105,6 +153,106 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
     func image(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.image(for: traits, preferredSize: preferredSize), traits: traits) }
     func pressedImage(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.pressedImage(for: traits, preferredSize: preferredSize), traits: traits) }
     func image(for item: DeltaCore.ControllerSkin.Item, traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> (UIImage, CGSize)? { base.image(for: item, traits: traits, preferredSize: preferredSize) }
+    func isTranslucent(for traits: DeltaCore.ControllerSkin.Traits) -> Bool? { base.isTranslucent(for: traits) }
+    func gameScreenFrame(for traits: DeltaCore.ControllerSkin.Traits) -> CGRect? { base.gameScreenFrame(for: traits) }
+    func screens(for traits: DeltaCore.ControllerSkin.Traits) -> [DeltaCore.ControllerSkin.Screen]? { base.screens(for: traits) }
+    func aspectRatio(for traits: DeltaCore.ControllerSkin.Traits) -> CGSize? { base.aspectRatio(for: traits) }
+    func contentSize(for traits: DeltaCore.ControllerSkin.Traits) -> CGSize? { base.contentSize(for: traits) }
+    func menuInsets(for traits: DeltaCore.ControllerSkin.Traits) -> UIEdgeInsets? { base.menuInsets(for: traits) }
+}
+
+/// Isolated user preference; OFF until explicitly enabled, retained across launches.
+final class BoundControllerModePreferences {
+    static let key = "bound.controller-mode.v1.enabled"
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    var isEnabled: Bool {
+        get { defaults.bool(forKey: Self.key) }
+        set {
+            defaults.set(newValue, forKey: Self.key)
+            NotificationCenter.default.post(name: BoundAppearancePreferences.didChangeNotification, object: nil)
+        }
+    }
+    static func hidesTouchControls(enabled: Bool, layout: BoundScreenLayout, landscape: Bool) -> Bool {
+        enabled && layout == .bound && landscape
+    }
+}
+
+/// Leaves Delta's screens and external-controller pipeline intact. Only the
+/// touchscreen skin's gameplay controls disappear; its real Menu remains.
+final class BoundControllerModeSkin: ControllerSkinProtocol {
+    let base: ControllerSkinProtocol
+    init(base: ControllerSkinProtocol) { self.base = base }
+    var name: String { base.name }
+    var identifier: String { base.identifier + ".bound-controller-mode" }
+    var gameType: GameType { base.gameType }
+    var isDebugModeEnabled: Bool { base.isDebugModeEnabled }
+    private func isMenu(_ item: DeltaCore.ControllerSkin.Item) -> Bool { item.inputs.allInputs.contains { $0.stringValue == "menu" } }
+    func items(for traits: DeltaCore.ControllerSkin.Traits) -> [DeltaCore.ControllerSkin.Item]? {
+        guard traits.orientation == .landscape else { return base.items(for: traits) }
+        return base.items(for: traits)?.filter(isMenu)
+    }
+    private func artwork(_ image: UIImage?, traits: DeltaCore.ControllerSkin.Traits) -> UIImage? {
+        guard traits.orientation == .landscape, let image else { return image }
+        return UIGraphicsImageRenderer(size: image.size).image { context in
+            for item in items(for: traits) ?? [] {
+                context.cgContext.saveGState()
+                context.cgContext.clip(to: item.extendedFrame.applying(.init(scaleX: image.size.width, y: image.size.height)))
+                image.draw(at: .zero)
+                context.cgContext.restoreGState()
+            }
+        }
+    }
+    @MainActor static func cancelTouchInputs(in controller: ControllerView,
+                                            preservingExternalInputsFrom controllers: [GameController] = [],
+                                            emulatorCore: EmulatorCore? = nil) {
+        let releasedPlayer = controller.playerIndex
+        controller.cancelTouchInputs()
+        // Thumbstick/touchscreen/sustained virtual inputs are separate from the
+        // button touch map. Release only this virtual controller's own state.
+        for input in Array(controller.sustainedInputs.keys) { controller.unsustain(input) }
+        for input in Array(controller.activatedInputs.keys) { controller.deactivate(input) }
+        guard let core = emulatorCore, let releasedPlayer,
+              core.gameViews.isEmpty || core.gameViews.contains(where: { $0.window?.windowScene?.hasKeyboardFocus == true }) else { return }
+        // Delta releases bridge bits per controller rather than aggregating
+        // players. Restore same-player external holds after virtual releases.
+        // Use the bridge directly: routing sustained inputs through didActivate
+        // would deliberately pulse them off for two frames. Never replay actions.
+        for external in controllers where external !== controller && external.playerIndex == releasedPlayer {
+            var held = external.sustainedInputs
+            for (input, value) in external.activatedInputs { held[input] = value }
+            for (physical, value) in held {
+                guard let mapped = external.mappedInput(for: physical, receiver: core) else { continue }
+                let gameInput: Input
+                if let standard = StandardGameControllerInput(input: mapped) {
+                    guard let resolved = standard.input(for: core.game.type) else { continue }
+                    gameInput = resolved
+                } else { gameInput = mapped }
+                guard gameInput.type == .game(core.game.type), let index = gameInput.intValue else { continue }
+                // Match EmulatorCore's discrete threshold and analog saturation.
+                var adjustedValue = value
+                if !gameInput.isContinuous && value < 0.33 {
+                    let sustained = external.sustainedInputs.first { input, _ in
+                        guard let mapped = external.mappedInput(for: input, receiver: core) else { return false }
+                        return (StandardGameControllerInput(input: mapped)?.input(for: core.game.type) ?? mapped) == gameInput
+                    }
+                    guard let sustained, sustained.value >= 0.33 else { continue }
+                    adjustedValue = sustained.value
+                } else if !gameInput.isContinuous && mapped.isContinuous && value > (1.0 - 0.33) {
+                    adjustedValue = 1
+                }
+                core.deltaCore.emulatorBridge.activateInput(index, value: adjustedValue, playerIndex: releasedPlayer)
+            }
+        }
+    }
+    func supports(_ traits: DeltaCore.ControllerSkin.Traits) -> Bool { base.supports(traits) }
+    func supportedTraits(for traits: DeltaCore.ControllerSkin.Traits) -> DeltaCore.ControllerSkin.Traits? { base.supportedTraits(for: traits) }
+    func image(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.image(for: traits, preferredSize: preferredSize), traits: traits) }
+    func pressedImage(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.pressedImage(for: traits, preferredSize: preferredSize), traits: traits) }
+    func image(for item: DeltaCore.ControllerSkin.Item, traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> (UIImage, CGSize)? {
+        guard traits.orientation != .landscape || isMenu(item) else { return nil }
+        return base.image(for: item, traits: traits, preferredSize: preferredSize)
+    }
     func isTranslucent(for traits: DeltaCore.ControllerSkin.Traits) -> Bool? { base.isTranslucent(for: traits) }
     func gameScreenFrame(for traits: DeltaCore.ControllerSkin.Traits) -> CGRect? { base.gameScreenFrame(for: traits) }
     func screens(for traits: DeltaCore.ControllerSkin.Traits) -> [DeltaCore.ControllerSkin.Screen]? { base.screens(for: traits) }

@@ -105,6 +105,7 @@ private class ControlsEditor
 // Edits the input mapping for one player + system + controller type.
 struct ControlsEditorView: View
 {
+    static let actionInputs: [AnyInput] = [ActionInput.quickSave, .quickLoad, .fastForward, .screenshot, .cycleBoundPanels].map(AnyInput.init)
     @SwiftUI.State
     private var editor: ControlsEditor
     
@@ -262,7 +263,7 @@ private struct InputMappingRow: View
     let controllerInput: Input
     
     // AnyInput because the picker requires a Hashable type.
-    static let actionInputs: [AnyInput] = [ActionInput.quickSave, .quickLoad, .fastForward, .screenshot].map(AnyInput.init)
+    static let actionInputs = ControlsEditorView.actionInputs
     
     // The inputs that can be mapped to: this system's game inputs, plus Menu (pause).
     var mappableInputs: [AnyInput] {

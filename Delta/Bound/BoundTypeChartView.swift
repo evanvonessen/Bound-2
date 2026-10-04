@@ -4,13 +4,26 @@ import UIKit
 /// Portrait only. Landscape deliberately retains its existing content and outer PiP gestures.
 struct BoundTypeChartView: UIViewRepresentable {
     var topInset: CGFloat = 0
+    var constrainsPan: Bool = false
     func makeUIView(context: Context) -> BoundPortraitChartScrollView { BoundPortraitChartScrollView() }
-    func updateUIView(_ uiView: BoundPortraitChartScrollView, context: Context) { uiView.topInset = topInset }
+    func updateUIView(_ uiView: BoundPortraitChartScrollView, context: Context) {
+        uiView.topInset = topInset
+        uiView.constrainsPan = constrainsPan
+    }
 }
 
 final class BoundPortraitChartScrollView: UIScrollView, UIScrollViewDelegate {
     private let chart = UIImageView(image: UIImage(named: "PokemonTypeChart"))
     var topInset: CGFloat = 0 { didSet { if oldValue != topInset { setNeedsLayout() } } }
+    var constrainsPan = false {
+        didSet {
+            guard oldValue != constrainsPan else { return }
+            bounces = !constrainsPan
+            previousViewport = .zero
+            setNeedsLayout()
+        }
+    }
+    private var adjustingPanBounds = false
     private var previousTopInset: CGFloat = -1
     private var previousViewport = CGSize.zero
     private var initialScale: CGFloat = 1
@@ -57,11 +70,44 @@ final class BoundPortraitChartScrollView: UIScrollView, UIScrollViewDelegate {
         resetZoom()
     }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { chart }
-    func scrollViewDidZoom(_ scrollView: UIScrollView) { centerSmallContent(); updateProbe() }
-    func scrollViewDidScroll(_ scrollView: UIScrollView) { updateProbe() }
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        centerSmallContent()
+        clampPanOffset()
+        updateProbe()
+    }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) { clampPanOffset(); updateProbe() }
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        centerSmallContent()
+        clampPanOffset()
+        updateProbe()
+    }
+    private func clampPanOffset() {
+        // Elastic pinch is independent of pan overscroll. Let UIKit complete its
+        // below-minimum zoom animation before enforcing the final pan bounds.
+        guard constrainsPan, !adjustingPanBounds, !isZooming, !isZoomBouncing else { return }
+        let minimum = CGPoint(x: -contentInset.left, y: -contentInset.top)
+        let maximum = CGPoint(x: max(minimum.x, contentSize.width - bounds.width + contentInset.right),
+                              y: max(minimum.y, contentSize.height - bounds.height + contentInset.bottom))
+        let clamped = CGPoint(x: min(maximum.x, max(minimum.x, contentOffset.x)),
+                              y: min(maximum.y, max(minimum.y, contentOffset.y)))
+        guard clamped != contentOffset else { return }
+        adjustingPanBounds = true
+        setContentOffset(clamped, animated: false)
+        adjustingPanBounds = false
+    }
     private func centerSmallContent() {
         let padding = BoundTypeChartGeometry.centeredInsets(content: contentSize, viewport: bounds.size)
-        contentInset = UIEdgeInsets(top: max(padding.vertical, topInset), left: padding.horizontal, bottom: padding.vertical, right: padding.horizontal)
+        if constrainsPan {
+            // A fitting image stays bottom-aligned above gameplay. Once an axis
+            // overflows, only image content can move through that viewport.
+            adjustingPanBounds = true
+            contentInset = UIEdgeInsets(top: max(0, bounds.height - contentSize.height),
+                                        left: padding.horizontal, bottom: 0, right: padding.horizontal)
+            adjustingPanBounds = false
+        } else {
+            contentInset = UIEdgeInsets(top: max(padding.vertical, topInset), left: padding.horizontal,
+                                        bottom: padding.vertical, right: padding.horizontal)
+        }
     }
     private func resetZoom() {
         setZoomScale(initialScale, animated: false)
