@@ -1,6 +1,7 @@
 import XCTest
 import UIKit
 import DeltaCore
+import ZIPFoundation
 @testable import Delta
 
 @MainActor final class AppearanceIntegrationTests: XCTestCase {
@@ -86,5 +87,80 @@ extension AppearanceIntegrationTests {
         }
         XCTAssertTrue(result.0.isEmpty)
         XCTAssertEqual(result.1.count, urls.count)
+    }
+}
+
+@MainActor final class ArchiveSecurityTests: XCTestCase {
+    private func makeArchive(at url: URL, entries: [(String, ZIPFoundation.Entry.EntryType, Data)]) throws {
+        let archive = try ZIPFoundation.Archive(url: url, accessMode: .create)
+        for (path, type, data) in entries {
+            try archive.addEntry(with: path, type: type, uncompressedSize: Int64(data.count)) { position, size in
+                data.subdata(in: Int(position)..<min(Int(position) + size, data.count))
+            }
+        }
+    }
+
+    func testTraversalAndEscapingSymlinksCannotWriteOutsideDestination() throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let outside = base.appendingPathComponent("outside", isDirectory: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let sentinel = outside.appendingPathComponent("sentinel.gba")
+        let original = Data("Original sentinel".utf8)
+        try original.write(to: sentinel)
+        let cases: [[(String, ZIPFoundation.Entry.EntryType, Data)]] = [
+            [("../outside/sentinel.gba", .file, Data("bad".utf8))],
+            [("/../outside/sentinel.gba", .file, Data("bad".utf8))],
+            [("escape", .symlink, Data("../outside".utf8)), ("escape/sentinel.gba", .file, Data("bad".utf8))],
+            [("escape", .symlink, Data(outside.path.utf8)), ("escape/sentinel.gba", .file, Data("bad".utf8))]
+        ]
+        for (index, entries) in cases.enumerated() {
+            let zip = base.appendingPathComponent("attack-\(index).zip")
+            let destination = base.appendingPathComponent("destination-\(index)", isDirectory: true)
+            try makeArchive(at: zip, entries: entries)
+            XCTAssertThrowsError(try FileManager.default.unzipItem(at: zip, to: destination))
+            XCTAssertEqual(try Data(contentsOf: sentinel), original)
+            XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: outside.path), ["sentinel.gba"])
+            XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent("escape").path))
+        }
+        let normal = base.appendingPathComponent("normal.zip")
+        try makeArchive(at: normal, entries: [("folder/game.gba", .file, original)])
+        let destination = base.appendingPathComponent("normal", isDirectory: true)
+        try FileManager.default.unzipItem(at: normal, to: destination)
+        XCTAssertEqual(try Data(contentsOf: destination.appendingPathComponent("folder/game.gba")), original)
+    }
+
+    func testROMImportRejectsSymlinkAndTraversalButImportsNormalGBAAndZIP() async throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let sentinel = base.appendingPathComponent("sentinel.gba")
+        let original = Data("Untouched sentinel".utf8); try original.write(to: sentinel)
+        let attack = base.appendingPathComponent("attack.zip")
+        try makeArchive(at: attack, entries: [
+            ("malicious.gba", .symlink, Data(sentinel.path.utf8)),
+            ("../sentinel.gba", .file, Data("bad".utf8)),
+            ("/../sentinel.gba", .file, Data("bad".utf8))
+        ])
+        let rejected = await withCheckedContinuation { continuation in
+            DatabaseManager.shared.importGames(at: [attack]) { continuation.resume(returning: ($0, $1)) }
+        }
+        XCTAssertTrue(rejected.0.isEmpty); XCTAssertFalse(rejected.1.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: sentinel), original)
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "BoundDiagnostic", withExtension: "gba"))
+        for zipped in [false, true] {
+            let bytes = try Data(contentsOf: fixture) + Data(UUID().uuidString.utf8)
+            let source = base.appendingPathComponent(zipped ? "normal.zip" : "normal.gba")
+            if zipped { try makeArchive(at: source, entries: [("normal.gba", .file, bytes)]) }
+            else { try bytes.write(to: source) }
+            let imported = await withCheckedContinuation { continuation in
+                DatabaseManager.shared.importGames(at: [source]) { continuation.resume(returning: ($0, $1)) }
+            }
+            XCTAssertTrue(imported.1.isEmpty); XCTAssertEqual(imported.0.count, 1)
+            let game = try XCTUnwrap(imported.0.first)
+            XCTAssertEqual(try Data(contentsOf: game.fileURL), bytes)
+            DatabaseManager.shared.viewContext.delete(game)
+            try DatabaseManager.shared.viewContext.save()
+        }
     }
 }

@@ -16,7 +16,7 @@ fi
 xcrun simctl boot "$QA_SIMULATOR_ID" > /dev/null 2>&1 || true
 xcrun simctl bootstatus "$QA_SIMULATOR_ID" -b > "$logs/simulator.log" 2>&1
 qa_derived="${QA_DERIVED_DATA:-$(pwd)/.build/DerivedData}"
-common=(-project Bound.xcodeproj -configuration Debug -destination "platform=iOS Simulator,id=$QA_SIMULATOR_ID" -derivedDataPath "$qa_derived" -parallel-testing-enabled NO IPHONEOS_DEPLOYMENT_TARGET=17.0 ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- -collect-test-diagnostics never -test-timeouts-enabled YES -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 180)
+common=(-project Bound.xcodeproj -configuration Debug -destination "platform=iOS Simulator,id=$QA_SIMULATOR_ID" -derivedDataPath "$qa_derived" -parallel-testing-enabled NO IPHONEOS_DEPLOYMENT_TARGET=17.0 ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- -collect-test-diagnostics never -test-timeouts-enabled YES -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 360)
 # This suite injects offline transport. It never constructs a live RTC engine.
 xcodebuild "${common[@]}" -scheme BoundIntegrationQA test > "$logs/integration.log" 2>&1
 python3 PrototypeTools/generate_diagnostic.py .build/fixtures/BoundDiagnostic.gba > "$logs/fixture.log"

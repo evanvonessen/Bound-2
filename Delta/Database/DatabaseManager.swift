@@ -363,6 +363,10 @@ extension DatabaseManager
             self.extractCompressedGames(at: Set(zipFileURLs)) { (extractedURLs, extractErrors) in
                 let gameURLs = urls.filter { $0.pathExtension.lowercased() != "zip" } + extractedURLs
                 self.importGames(at: Set(gameURLs)) { (importedGames, importErrors) in
+                    // Extraction owns these unique directories; remove them after import.
+                    for directory in Set(extractedURLs.map { $0.deletingLastPathComponent() }) {
+                        try? FileManager.default.removeItem(at: directory)
+                    }
                     let allErrors = importErrors.union(extractErrors)
                     completion?(importedGames, allErrors)
                 }
@@ -573,12 +577,18 @@ extension DatabaseManager
                     continue
                 }
                 
+                let extractionDirectory = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("BoundGameImport-" + UUID().uuidString, isDirectory: true)
+                var extractedAnyFile = false
+                defer {
+                    if !extractedAnyFile { try? FileManager.default.removeItem(at: extractionDirectory) }
+                }
                 for entry in archive
                 {
                     do
                     {
                         // Ensure entry is not in a subdirectory
-                        guard !entry.path.contains("/") else { continue }
+                        guard entry.type == .file, !entry.path.contains("/"), !entry.path.contains("\\") else { continue }
                         
                         let fileExtension = (entry.path as NSString).pathExtension
                         
@@ -590,7 +600,7 @@ extension DatabaseManager
                         archiveContainsValidGameFile = true
                         
                         // Must use temporary directory, and not the directory containing zip file, since the latter might be read-only (such as when importing from Safari)
-                        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent(entry.path)
+                        let outputURL = extractionDirectory.appendingPathComponent(entry.path)
                         
                         if FileManager.default.fileExists(atPath: outputURL.path)
                         {
@@ -600,6 +610,7 @@ extension DatabaseManager
                         _ = try archive.extract(entry, to: outputURL, skipCRC32: true)
                         
                         outputURLs.insert(outputURL)
+                        extractedAnyFile = true
                     }
                     catch
                     {

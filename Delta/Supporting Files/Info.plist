@@ -501,7 +501,5 @@
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Bound 2</string>
-	<key>BoundBuildEntry</key>
-	<string>Bound 2 native project</string>
 </dict>
 </plist>

@@ -279,15 +279,9 @@ extension GamesViewController
     {
         super.viewDidAppear(animated)
         
-        let whatsNewVersion = UserDefaults.standard.previousWhatsNewVersion ?? "0"
-        let isUpdatedWhatsNew = (whatsNewVersion.compare(UserDefaults.whatsNewVersion, options: .numeric) == .orderedAscending)
-        
-        if !UserDefaults.standard.didShowWhatsNew || isUpdatedWhatsNew
-        {
-            self.performSegue(withIdentifier: "showWhatsNew", sender: nil)
-            UserDefaults.standard.didShowWhatsNew = true
-            UserDefaults.standard.previousWhatsNewVersion = UserDefaults.whatsNewVersion
-        }
+        // Bound's first run opens the Library directly; upstream Delta release notes
+        // and subscription announcements are not this app's onboarding.
+
     }
     
     override func didReceiveMemoryWarning()

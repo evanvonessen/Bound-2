@@ -37,3 +37,6 @@
 [submodule "Vendor/RevenueCat"]
 	path = Vendor/RevenueCat
 	url = https://github.com/RevenueCat/purchases-ios-spm.git
+[submodule "External/ZIPFoundation"]
+	path = External/ZIPFoundation
+	url = https://github.com/weichsel/ZIPFoundation.git

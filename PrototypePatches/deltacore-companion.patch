@@ -307,3 +307,29 @@ index 4435946..615df51 100644
          if let emulatorCore = self.emulatorCore, emulatorCore.state != .running
          {
              // WORKAROUND
+diff --git a/DeltaCore.xcodeproj/project.pbxproj b/DeltaCore.xcodeproj/project.pbxproj
+index cac03e4..c81b65f 100644
+--- a/DeltaCore.xcodeproj/project.pbxproj
++++ b/DeltaCore.xcodeproj/project.pbxproj
+@@ -154,7 +154,7 @@
+ 		BFBAB2E41EB688FC004E0B0E /* CharacterSet+Hexadecimals.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CharacterSet+Hexadecimals.swift"; sourceTree = "<group>"; };
+ 		BFBAE94420CC6E1A00E78FBC /* ExtensibleEnums.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ExtensibleEnums.swift; path = DeltaCore/Types/ExtensibleEnums.swift; sourceTree = SOURCE_ROOT; };
+ 		BFC853381DB03BD000E8C372 /* ControllerSkinProtocol.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ControllerSkinProtocol.swift; sourceTree = "<group>"; };
+-		BFCBD90B20CC6F6F0028E309 /* ZIPFoundation.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ZIPFoundation.xcodeproj; path = External/ZIPFoundation/ZIPFoundation.xcodeproj; sourceTree = SOURCE_ROOT; };
++		BFCBD90B20CC6F6F0028E309 /* ZIPFoundation.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ZIPFoundation.xcodeproj; path = ../../External/ZIPFoundation/ZIPFoundation.xcodeproj; sourceTree = SOURCE_ROOT; };
+ 		BFD27EF61D261E9B00E081A3 /* DeltaTypes.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DeltaTypes.m; sourceTree = "<group>"; };
+ 		BFD78F611C994596000441FC /* VideoManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoManager.swift; sourceTree = "<group>"; };
+ 		BFE4380F1AF606980095A5F1 /* GameController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = GameController.swift; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
+diff --git a/Package.swift b/Package.swift
+index b90bdb3..999a2e6 100644
+--- a/Package.swift
++++ b/Package.swift
+@@ -12,7 +12,7 @@ let package = Package(
+         .library(name: "DeltaCore", targets: ["DeltaCore", "CDeltaCore"]),
+     ],
+     dependencies: [
+-        .package(name: "ZIPFoundation", url: "https://github.com/weichsel/ZIPFoundation.git", .upToNextMinor(from: "0.9.11"))
++        .package(name: "ZIPFoundation", url: "https://github.com/weichsel/ZIPFoundation.git", .exact("0.9.18"))
+     ],
+     targets: [
+         .target(

@@ -160,24 +160,20 @@ class SettingsViewController: UITableViewController
     {
         super.viewDidLoad()
         
-        if let version = Bundle.main.object(forInfoDictionaryKey: "DLTAVersion") as? String
-        {
-            self.versionLabel.text = NSLocalizedString(String(format: "Delta %@", version), comment: "Delta Version")
-        }
-        else if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         {
             #if LITE
-            self.versionLabel.text = NSLocalizedString(String(format: "Delta Lite %@", version), comment: "Delta Version")
+            self.versionLabel.text = NSLocalizedString(String(format: "Bound 2 %@", version), comment: "Delta Version")
             #else
-            self.versionLabel.text = NSLocalizedString(String(format: "Delta %@", version), comment: "Delta Version")
+            self.versionLabel.text = NSLocalizedString(String(format: "Bound 2 %@", version), comment: "Delta Version")
             #endif
         }
         else
         {
             #if LITE
-            self.versionLabel.text = NSLocalizedString("Delta Lite", comment: "")
+            self.versionLabel.text = NSLocalizedString("Bound 2", comment: "")
             #else
-            self.versionLabel.text = NSLocalizedString("Delta", comment: "")
+            self.versionLabel.text = NSLocalizedString("Bound 2", comment: "")
             #endif
         }
         
@@ -301,21 +297,23 @@ private extension SettingsViewController
     {
         switch section
         {
+        // This app uses Bound's friend service; upstream subscription/sync is inactive.
+        case .patreon, .syncing: return true
+        #if !DEBUG
+        case .advanced: return true
+        #endif
         case .multitasking where !UIApplication.shared.supportsMultipleScenes: return true
         case .hapticFeedback where !UIDevice.current.isVibrationSupported: return true
-            
+
+        #if DEBUG
         case .advanced:
             guard #unavailable(iOS 15) else { return false }
-            
+
             // OSLogStore is not available on iOS 14, so section is only visible if experimental features is visible.
             return !PurchaseManager.shared.supportsExperimentalFeatures
-            
-        #if LEGACY || BETA
-        case .patreon: return true
-        #elseif APP_STORE
-        case .patreon: return !PurchaseManager.shared.supportsExperimentalFeatures
         #endif
-            
+
+
         case .hapticTouch:
             if #available(iOS 13, *)
             {
@@ -326,7 +324,7 @@ private extension SettingsViewController
             {
                 return self.view.traitCollection.forceTouchCapability != .available
             }
-            
+
         default: return false
         }
     }

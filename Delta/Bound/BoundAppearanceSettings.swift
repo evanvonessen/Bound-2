@@ -33,14 +33,10 @@ struct BoundAppearanceSettings: View {
         } header: { Text("Touch feedback") } footer: {
             Text("Uses Delta's native touch feedback. Both are on by default. Physical controllers do not trigger touch feedback; this device may not support vibration.")
         }
-        Section("About Bound Delta") {
-            if let entry = Bundle.main.object(forInfoDictionaryKey: "BoundBuildEntry") as? String {
-                LabeledContent("Build entry", value: entry).accessibilityIdentifier("bound.build-entry")
-            }
+        Section("About Bound 2") {
             LabeledContent("Version", value: (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") + " (" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") + ")")
-            Text("A private testing prototype built on Delta. Delta and its emulator dependencies retain their original copyright and license notices.").font(.footnote).foregroundStyle(.secondary)
+            Text("Built on Delta. Delta and its emulator dependencies retain their original copyright and license notices.").font(.footnote).foregroundStyle(.secondary)
             Link("Delta source and license", destination: URL(string: "https://github.com/rileytestut/Delta")!)
-            Text("Live friend sharing and haptics still need physical-device testing. This build is not an App Store release.").font(.footnote).foregroundStyle(.secondary)
         }
         Section {
             Button("Reset appearance and feedback to Delta defaults") {

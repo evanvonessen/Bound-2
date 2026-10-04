@@ -488,3 +488,46 @@ final class FileImportUITests: XCTestCase {
         XCTAssertTrue(app.segmentedControls["bound.panel-toggle"].waitForExistence(timeout: 15))
     }
 }
+
+final class ReleaseSmokeUITests: XCTestCase {
+    func testReleaseLibrarySettingsAndPlaybackHaveNoDevelopmentUI() throws {
+        #if DEBUG
+        throw XCTSkip("Run this smoke case with -configuration Release.")
+        #else
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Add"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Close"].exists, "No upstream release-note onboarding")
+        app.buttons["Settings"].tap()
+        XCTAssertFalse(app.staticTexts["Experimental Features"].exists)
+        XCTAssertFalse(app.staticTexts["Delta Sync"].exists)
+        XCTAssertFalse(app.staticTexts["Patreon"].exists)
+        let done = app.buttons["Done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 10)); done.tap()
+        // A generated game is imported by the fixture setup, never a personal ROM.
+        let cell = app.collectionViews.cells.firstMatch
+        XCTAssertTrue(cell.waitForExistence(timeout: 20)); cell.tap()
+        XCTAssertTrue(app.segmentedControls["bound.panel-toggle"].waitForExistence(timeout: 15))
+        app.buttons["bound.layout-settings"].tap()
+        let about = app.staticTexts["About Bound 2"].firstMatch
+        for _ in 0..<6 {
+            if about.exists && about.isHittable { break }
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(about.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Build entry"].exists)
+        XCTAssertFalse(app.staticTexts["Engine source"].exists)
+        XCTAssertFalse(app.staticTexts["Package identifier"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "private testing prototype")).firstMatch.exists)
+        app.buttons["Done"].firstMatch.tap()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.segmentedControls["bound.panel-toggle"].exists)
+        app.buttons["Notes"].firstMatch.tap()
+        XCTAssertTrue(app.textViews["bound.notes-editor"].waitForExistence(timeout: 10))
+        app.buttons["Types"].firstMatch.tap()
+        XCTAssertTrue(app.scrollViews["bound.type-chart"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .portrait
+        #endif
+    }
+}

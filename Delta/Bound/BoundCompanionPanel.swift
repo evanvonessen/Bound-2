@@ -341,14 +341,24 @@ private struct BoundPiPSettings: View {
                 Section("Emulation backend") {
                     if let details = state.emulationDetails {
                         LabeledContent("Active package", value: details.packageName).accessibilityIdentifier("bound.emulation-package")
+                        #if DEBUG
                         LabeledContent("Package identifier", value: details.packageIdentifier).font(.caption)
                         LabeledContent("Package build", value: details.packageBuild).accessibilityIdentifier("bound.emulation-package-build")
-                        if let engine = details.engineName, let revision = details.engineRevision {
+                        #else
+                        LabeledContent("Package version", value: details.packageVersion ?? "Source build").accessibilityIdentifier("bound.emulation-package-build")
+                        #endif
+                        if let engine = details.engineName {
                             LabeledContent("Emulator engine", value: engine).accessibilityIdentifier("bound.emulation-engine")
-                            LabeledContent("Engine source", value: "Pinned " + String(revision.prefix(12))).accessibilityIdentifier("bound.emulation-engine-build")
+                            #if DEBUG
+                            if let revision = details.engineRevision {
+                                LabeledContent("Engine source", value: "Pinned " + String(revision.prefix(12))).accessibilityIdentifier("bound.emulation-engine-build")
+                            }
+                            #endif
                         }
+                        #if DEBUG
                         Text("DeltaCore pinned source " + String(BoundEmulationDetails.deltaCoreRevision.prefix(12))).font(.caption)
                         Text("Delta upstream source " + String(BoundEmulationDetails.deltaUpstreamRevision.prefix(12))).font(.caption)
+                        #endif
                         Text("Screen layout changes presentation only; it does not switch the emulator engine.").font(.footnote).foregroundStyle(.secondary)
                     } else { Text("No emulation package is active.") }
                 }
