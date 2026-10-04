@@ -515,7 +515,11 @@ final class ReleaseSmokeUITests: XCTestCase {
         let about = app.staticTexts["About Bound 2"].firstMatch
         for _ in 0..<6 {
             if about.exists && about.isHittable { break }
-            app.scrollViews.firstMatch.swipeUp()
+            let form = app.collectionViews.firstMatch
+            XCTAssertTrue(form.exists)
+            let start = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.80))
+            let end = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.40))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
         XCTAssertTrue(about.waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Build entry"].exists)

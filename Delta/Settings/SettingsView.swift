@@ -40,7 +40,6 @@ struct SettingsView: View
                 DisplaySection()
                 MiscellaneousSection()
                 CreditsSection()
-                SupportSection()
             }
             .safeAreaPadding(.top, 8)
             .navigationTitle("Settings")
