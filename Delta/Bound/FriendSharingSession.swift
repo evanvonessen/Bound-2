@@ -3,6 +3,33 @@ import Combine
 import UIKit
 import QuartzCore
 
+/// Captured-resource cleanup avoids the isolated-deinit backdeployment trampoline.
+/// Registration can happen on any thread; resource access happens only on MainActor.
+/// Draining before RTC creation prevents an old same-turn disposal destroying a
+/// replacement singleton. Owners must still stop a running session before replacement.
+final class BoundMainActorDisposal: @unchecked Sendable {
+    private static let queue = BoundMainActorDisposal()
+    private let lock = NSLock()
+    private var actions: [@MainActor () -> Void] = []
+    @MainActor private static var draining = false
+    static func enqueue(_ action: @escaping @MainActor () -> Void) {
+        queue.lock.lock(); queue.actions.append(action); queue.lock.unlock()
+        Task { @MainActor in drainPending() }
+    }
+    @MainActor static func drainPending() {
+        guard !draining else { return }
+        draining = true
+        defer { draining = false }
+        while true {
+            queue.lock.lock()
+            let pending = queue.actions; queue.actions.removeAll(keepingCapacity: true)
+            queue.lock.unlock()
+            guard !pending.isEmpty else { return }
+            pending.forEach { $0() }
+        }
+    }
+}
+
 /// Optional diagnostic I/O has one pending value per kind. Slow console/disk
 /// consumers cannot grow a queue or block display and SDK callback owners.
 private final class FriendSharingDiagnosticOutput: @unchecked Sendable {
@@ -93,8 +120,12 @@ final class FriendSharingDisplayLink: SharingCancellation {
         link.preferredFramesPerSecond = FriendSharingCadence.presentationFramesPerSecond
         link.add(to: .main, forMode: .common)
     }
-    func cancel() { link?.invalidate(); link = nil; action = nil }
-    isolated deinit { link?.invalidate() }
+    func cancel() { BoundMainActorDisposal.drainPending(); link?.invalidate(); link = nil; action = nil }
+    deinit {
+        let link = link
+        // Explicit resource transfer avoids isolated-deinit backdeployment on older runtimes.
+        BoundMainActorDisposal.enqueue { link?.invalidate() }
+    }
 }
 
 @MainActor
@@ -115,9 +146,12 @@ final class FriendSharingTimer: SharingCancellation {
         if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
 
-    func cancel() { timer?.invalidate(); timer = nil; action = nil }
+    func cancel() { BoundMainActorDisposal.drainPending(); timer?.invalidate(); timer = nil; action = nil }
 
-    isolated deinit { timer?.invalidate() }
+    deinit {
+        let timer = timer
+        BoundMainActorDisposal.enqueue { timer?.invalidate() }
+    }
 }
 
 @MainActor
@@ -220,15 +254,21 @@ final class FriendSharingSession: ObservableObject {
         if isConfigured { status = "Game sharing ready" }
     }
 
-    isolated deinit {
-        // SwiftUI disappearance is an early cleanup opportunity, not an ownership
-        // guarantee. Disposal independently unregisters the receive display link and leaves RTC.
+    deinit {
+        // Do not rely on isolated-deinit backdeployment: the iOS 26.3 Simulator
+        // runtime aborted inside that trampoline during SwiftUI teardown with Xcode 27.
+        // Captures retain only resources, never this owner. Deallocation may occur
+        // off-main; all actor-owned cancellation/RTC cleanup is explicitly enqueued.
         tokenTask?.cancel()
-        tokenDeadline?.cancel()
-        receiverDisplayLink?.cancel()
-        recoveryDeadline?.cancel()
-        sharing.stop()
-        transport.stop()
+        let tokenDeadline = tokenDeadline, receiverDisplayLink = receiverDisplayLink
+        let recoveryDeadline = recoveryDeadline, sharing = sharing, transport = transport
+        BoundMainActorDisposal.enqueue {
+            tokenDeadline?.cancel()
+            receiverDisplayLink?.cancel()
+            recoveryDeadline?.cancel()
+            sharing.stop()
+            transport.stop()
+        }
     }
 
     /// Entering the UI-owned authenticated flow permanently leaves temporary
@@ -241,6 +281,7 @@ final class FriendSharingSession: ObservableObject {
     }
 
     func start() {
+        BoundMainActorDisposal.drainPending()
         guard !active, !backgrounded else { return }
         if authenticatedMode {
             guard let room = roomProvider(), let identity = authenticatedSession?() else {
@@ -422,6 +463,7 @@ final class FriendSharingSession: ObservableObject {
     }
 
     func stop() {
+        BoundMainActorDisposal.drainPending()
         generation = UUID()
         tokenTask?.cancel(); tokenTask = nil
         tokenDeadline?.cancel(); tokenDeadline = nil

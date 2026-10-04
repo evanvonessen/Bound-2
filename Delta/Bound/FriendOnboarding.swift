@@ -42,7 +42,11 @@ final class FriendOnboarding: ObservableObject {
         return response
     }) { self.call = call }
 
-    isolated deinit { task?.cancel(); observation?.cancel() }
+    deinit {
+        task?.cancel()
+        let observation = observation
+        BoundMainActorDisposal.enqueue { observation?.cancel() }
+    }
     func open(sharing: FriendSharingSession, existing: (() -> AppCloudSession?)?) {
         self.sharing = sharing; reusedSession = existing
         if !permitsRTC {

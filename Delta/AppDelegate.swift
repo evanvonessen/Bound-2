@@ -36,6 +36,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool
     {
+        #if DEBUG && targetEnvironment(simulator)
+        // Deterministic UI QA avoids Xcode animation-idle notification stalls.
+        // Release and physical-device behavior retain their normal transitions.
+        if ProcessInfo.processInfo.arguments.contains("--bound-ui-no-animations") {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
         Settings.registerDefaults()
         
         self.registerCores()

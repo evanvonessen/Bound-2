@@ -1,0 +1,73 @@
+--- a/N64DeltaCore.xcodeproj/project.pbxproj
++++ b/N64DeltaCore.xcodeproj/project.pbxproj
+@@ -11,8 +11,6 @@
+ 		BF0D528D224D63DB0096DF50 /* LICENSES in Resources */ = {isa = PBXBuildFile; fileRef = BF0D5267224D63DB0096DF50 /* LICENSES */; };
+ 		BF0D528F224D63DC0096DF50 /* mupen64plus-rsp-hle.vcxproj in Resources */ = {isa = PBXBuildFile; fileRef = BF0D526C224D63DB0096DF50 /* mupen64plus-rsp-hle.vcxproj */; };
+ 		BF0D5290224D63DC0096DF50 /* RELEASE in Resources */ = {isa = PBXBuildFile; fileRef = BF0D526D224D63DB0096DF50 /* RELEASE */; };
+-		BF0D5291224D63DC0096DF50 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = BF0D526E224D63DB0096DF50 /* .gitignore */; };
+-		BF0D5292224D63DC0096DF50 /* .gitattributes in Resources */ = {isa = PBXBuildFile; fileRef = BF0D526F224D63DB0096DF50 /* .gitattributes */; };
+ 		BF0D5293224D63DC0096DF50 /* .travis.yml in Resources */ = {isa = PBXBuildFile; fileRef = BF0D5270224D63DB0096DF50 /* .travis.yml */; };
+ 		BF0D5297224D63DC0096DF50 /* alist.h in Headers */ = {isa = PBXBuildFile; fileRef = BF0D5275224D63DB0096DF50 /* alist.h */; };
+ 		BF0D5298224D63DC0096DF50 /* arithmetics.h in Headers */ = {isa = PBXBuildFile; fileRef = BF0D5276224D63DB0096DF50 /* arithmetics.h */; };
+@@ -574,8 +572,6 @@
+ 		BF0D526A224D63DB0096DF50 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+ 		BF0D526C224D63DB0096DF50 /* mupen64plus-rsp-hle.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = "mupen64plus-rsp-hle.vcxproj"; sourceTree = "<group>"; };
+ 		BF0D526D224D63DB0096DF50 /* RELEASE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
+-		BF0D526E224D63DB0096DF50 /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+-		BF0D526F224D63DB0096DF50 /* .gitattributes */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitattributes; sourceTree = "<group>"; };
+ 		BF0D5270224D63DB0096DF50 /* .travis.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
+ 		BF0D5272224D63DB0096DF50 /* alist_audio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alist_audio.c; sourceTree = "<group>"; };
+ 		BF0D5273224D63DB0096DF50 /* jpeg.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jpeg.c; sourceTree = "<group>"; };
+@@ -649,7 +645,6 @@
+ 		BF2EF84A224C1C070032AD78 /* appveyor.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = appveyor.yml; sourceTree = "<group>"; };
+ 		BF2EF84C224C1C070032AD78 /* GLideN64.custom.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = GLideN64.custom.ini; sourceTree = "<group>"; };
+ 		BF2EF84D224C1C070032AD78 /* GLideN64.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = GLideN64.ini; sourceTree = "<group>"; };
+-		BF2EF84E224C1C070032AD78 /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+ 		BF2EF84F224C1C070032AD78 /* .travis.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
+ 		BF2EF851224C1C070032AD78 /* gliden64_pt_BR.ts */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = gliden64_pt_BR.ts; sourceTree = "<group>"; };
+ 		BF2EF852224C1C070032AD78 /* gliden64_fr.ts */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = gliden64_fr.ts; sourceTree = "<group>"; };
+@@ -1157,8 +1152,6 @@
+ 		BF7994C6224BFF6B009B094F /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+ 		BF7994C7224BFF6B009B094F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+ 		BF7994C8224BFF6B009B094F /* appveyor.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = appveyor.yml; sourceTree = "<group>"; };
+-		BF7994C9224BFF6B009B094F /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+-		BF7994CA224BFF6B009B094F /* .gitattributes */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitattributes; sourceTree = "<group>"; };
+ 		BF7994CC224BFF6B009B094F /* new_dynarec.mediawiki */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = new_dynarec.mediawiki; sourceTree = "<group>"; };
+ 		BF7994CE224BFF6C009B094F /* Mupen64Plus-v2.0-Core-Video-Extension.mediawiki */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "Mupen64Plus-v2.0-Core-Video-Extension.mediawiki"; sourceTree = "<group>"; };
+ 		BF7994CF224BFF6C009B094F /* Mupen64Plus-v2.0-API-Versioning.mediawiki */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "Mupen64Plus-v2.0-API-Versioning.mediawiki"; sourceTree = "<group>"; };
+@@ -1462,8 +1455,6 @@
+ 				BF0D5267224D63DB0096DF50 /* LICENSES */,
+ 				BF0D5268224D63DB0096DF50 /* projects */,
+ 				BF0D526D224D63DB0096DF50 /* RELEASE */,
+-				BF0D526E224D63DB0096DF50 /* .gitignore */,
+-				BF0D526F224D63DB0096DF50 /* .gitattributes */,
+ 				BF0D5270224D63DB0096DF50 /* .travis.yml */,
+ 				BF0D5271224D63DB0096DF50 /* src */,
+ 			);
+@@ -1546,7 +1537,6 @@
+ 		BF2EF815224C1C070032AD78 /* GLideN64 */ = {
+ 			isa = PBXGroup;
+ 			children = (
+-				BF2EF84E224C1C070032AD78 /* .gitignore */,
+ 				BF2EF816224C1C070032AD78 /* LICENSE */,
+ 				BF2EF849224C1C070032AD78 /* README.md */,
+ 				BF2EF84F224C1C070032AD78 /* .travis.yml */,
+@@ -2527,8 +2517,6 @@
+ 		BF7994A7224BFF6B009B094F /* mupen64plus-core */ = {
+ 			isa = PBXGroup;
+ 			children = (
+-				BF7994CA224BFF6B009B094F /* .gitattributes */,
+-				BF7994C9224BFF6B009B094F /* .gitignore */,
+ 				BF7994F5224BFF6C009B094F /* CREDITS */,
+ 				BF7994BD224BFF6B009B094F /* INSTALL */,
+ 				BF7994BE224BFF6B009B094F /* LICENSES */,
+@@ -3731,9 +3719,7 @@
+ 				BF0D528F224D63DC0096DF50 /* mupen64plus-rsp-hle.vcxproj in Resources */,
+ 				BF0D52A4224D63DC0096DF50 /* rsp_api_export.ver in Resources */,
+ 				BF0D5293224D63DC0096DF50 /* .travis.yml in Resources */,
+-				BF0D5292224D63DC0096DF50 /* .gitattributes in Resources */,
+ 				BF0D528D224D63DB0096DF50 /* LICENSES in Resources */,
+-				BF0D5291224D63DC0096DF50 /* .gitignore in Resources */,
+ 				BF0D528C224D63DB0096DF50 /* INSTALL in Resources */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;

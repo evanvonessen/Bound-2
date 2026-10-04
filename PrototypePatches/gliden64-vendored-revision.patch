@@ -1,0 +1,11 @@
+diff --git a/src/getRevision.sh b/src/getRevision.sh
+index b76ba3e2..cfaf7068 100755
+--- a/src/getRevision.sh
++++ b/src/getRevision.sh
+@@ -1,4 +1,6 @@
+ SCRIPT_DIRECTORY=`dirname "$0"`
++# Source snapshots use the pinned revision header; never rewrite it from the app repository.
++if [ ! -e "$SCRIPT_DIRECTORY/../.git" ]; then exit 0; fi
+ rev=\"`git rev-parse --short HEAD`\"
+ echo current revision $rev
+ echo "#define PLUGIN_REVISION $rev" > $SCRIPT_DIRECTORY/Revision.h

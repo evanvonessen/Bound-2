@@ -1,0 +1,49 @@
+excluded:
+  - Carthage
+  - Examples
+  - Tests/InstallationTests
+  - Tests/TestingApps
+  - Tests/APITesters
+  - vendor
+  - scan_derived_data
+  - .git
+  - .build
+
+opt_in_rules:
+  - sorted_imports
+  - missing_docs
+  - convenience_type
+  - multiline_parameters
+  - vertical_parameter_alignment
+  - vertical_parameter_alignment_on_call
+  - explicit_init
+
+disabled_rules:
+  - orphaned_doc_comment
+  - blanket_disable_command
+  # Broken: https://github.com/realm/SwiftLint/issues/5153
+  - unneeded_synthesized_initializer
+  - non_optional_string_data_conversion
+  - static_over_final_class
+
+custom_rules:
+  xctestcase_superclass:
+    included: ".*\\.swift"
+    excluded:
+      - Tests/ReceiptParserTests
+      - Tests/v3LoadShedderIntegration
+    regex: "\\: XCTestCase \\{"
+    name: "XCTestCase Superclass"
+    message: "Test classes must inherit `TestCase` instead."
+
+identifier_name:
+  max_length: 
+    warning: 60 
+    error: 80
+
+large_tuple:
+  warning: 4
+  error: 5
+
+missing_docs:
+  excludes_inherited_types: false

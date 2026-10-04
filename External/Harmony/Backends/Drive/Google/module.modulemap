@@ -1,0 +1,21 @@
+module GoogleDrive {
+    umbrella header "GTLRDrive.h"
+
+    header "GTLRDefines.h"
+
+    header "GTLRBatchQuery.h"
+    header "GTLRBatchResult.h"
+    header "GTLRDateTime.h"
+    header "GTLRDuration.h"
+    header "GTLRErrorObject.h"
+    header "GTLRObject.h"
+    header "GTLRQuery.h"
+    header "GTLRRuntimeCommon.h"
+    header "GTLRService.h"
+    header "GTLRUploadParameters.h"
+    
+    header "GTMSessionFetcher.h"
+    header "GTMSessionFetcherService.h"
+
+    export *
+}

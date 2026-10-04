@@ -1,0 +1,948 @@
+{
+  "name": "Standard Genesis",
+  "identifier": "com.delta.genesis.standard",
+  "gameTypeIdentifier": "com.rileytestut.delta.game.genesis",
+  "debug": false,
+  "representations": {
+    "iphone": {
+      "standard": {
+        "portrait": {
+          "assets": {
+            "resizable": "iphone_portrait.pdf"
+          },
+                    "items": [
+                        {
+                            "inputs": {
+                                "up": "up",
+                                "down": "down",
+                                "left": "left",
+                                "right": "right"
+                            },
+                            "frame": {
+                                "x": 25,
+                                "y": 70,
+                                "width": 99,
+                                "height": 99
+                            },
+                            "extendedEdges": {
+                                "top": 25,
+                                "bottom": 25,
+                                "left": 25,
+                                "right": 25
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "a"
+                            ],
+                            "frame": {
+                                "x": 167,
+                                "y": 132,
+                                "width": 41,
+                                "height": 41
+                            },
+                            "extendedEdges": {
+                                "right": 2
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "b"
+                            ],
+                            "frame": {
+                                "x": 212,
+                                "y": 108,
+                                "width": 41,
+                                "height": 41
+                            },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 3
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "c"
+                            ],
+                            "frame": {
+                                "x": 258,
+                                "y": 90,
+                                "width": 41,
+                                "height": 41
+                            },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 21
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "start"
+                            ],
+                            "frame": {
+                                "x": 178,
+                                "y": 48,
+                                "width": 47,
+                                "height": 28
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "menu"
+                            ],
+                            "frame": {
+                                "x": 10,
+                                "y": 219,
+                                "width": 22,
+                                "height": 22
+                            },
+                            "extendedEdges": {
+                                "right": 30
+                            }
+                        }
+                    ],
+          "mappingSize": {
+            "width": 320,
+            "height": 254
+          },
+          "extendedEdges": {
+            "top": 10,
+            "bottom": 10,
+            "left": 10,
+            "right": 10
+          }
+        },
+        "landscape": {
+          "assets": {
+            "resizable": "iphone_landscape.pdf"
+          },
+          "items": [
+            {
+              "inputs": {
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right"
+              },
+              "frame": {
+                "x": 32,
+                "y": 188,
+                "width": 99,
+                "height": 99
+              },
+              "extendedEdges": {
+                "top": 30,
+                "bottom": 35,
+                "left": 50,
+                "right": 30
+              }
+            },
+            {
+              "inputs": [
+                "a"
+              ],
+              "frame": {
+                "x": 409,
+                "y": 250,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 20,
+                "right": 2
+              }
+            },
+            {
+              "inputs": [
+                "b"
+              ],
+              "frame": {
+                "x": 454,
+                "y": 226,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 2,
+                "right": 3
+              }
+            },
+            {
+              "inputs": [
+                "c"
+              ],
+              "frame": {
+                "x": 500,
+                "y": 208,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 2,
+                "right": 50
+              }
+            },
+            {
+              "inputs": [
+                "start"
+              ],
+              "frame": {
+                "x": 252,
+                "y": 284,
+                "width": 65,
+                "height": 25
+              },
+              "extendedEdges": {
+                "bottom": 12
+              }
+            },
+            {
+              "inputs": [
+                "menu"
+              ],
+              "frame": {
+                "x": 11,
+                "y": 14,
+                "width": 65,
+                "height": 25
+              },
+              "extendedEdges": {
+                "top": 15,
+                "left": 30
+              }
+            }
+          ],
+          "mappingSize": {
+            "width": 569,
+            "height": 320
+          },
+          "extendedEdges": {
+            "top": 10,
+            "bottom": 10,
+            "left": 10,
+            "right": 10
+          },
+          "translucent": true
+        }
+      },
+      "edgeToEdge": {
+        "portrait": {
+          "assets": {
+            "resizable": "iphone_edgetoedge_portrait.pdf"
+          },
+          "items": [
+            {
+              "inputs": {
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right"
+              },
+              "frame": {
+                "x": 25,
+                "y": 70,
+                "width": 99,
+                "height": 99
+              },
+                            "extendedEdges": {
+                                "top": 25,
+                                "bottom": 25,
+                                "left": 25,
+                                "right": 25
+                            }
+            },
+            {
+              "inputs": [
+                "a"
+              ],
+              "frame": {
+                "x": 167,
+                "y": 132,
+                "width": 41,
+                "height": 41
+              },
+                            "extendedEdges": {
+                                "right": 2
+                            }
+            },
+            {
+              "inputs": [
+                "b"
+              ],
+              "frame": {
+                "x": 212,
+                "y": 108,
+                "width": 41,
+                "height": 41
+              },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 3
+                            }
+            },
+            {
+              "inputs": [
+                "c"
+              ],
+              "frame": {
+                "x": 258,
+                "y": 90,
+                "width": 41,
+                "height": 41
+              },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 21
+                            }
+            },
+            {
+              "inputs": [
+                "start"
+              ],
+              "frame": {
+                "x": 178,
+                "y": 48,
+                "width": 47,
+                "height": 28
+              }
+            },
+            {
+              "inputs": [
+                "menu"
+              ],
+              "frame": {
+                "x": 10,
+                "y": 219,
+                "width": 22,
+                "height": 22
+              },
+                            "extendedEdges": {
+                                "right": 30
+                            }
+            }
+          ],
+          "mappingSize": {
+            "width": 320,
+            "height": 274
+          },
+          "extendedEdges": {
+            "top": 10,
+            "bottom": 10,
+            "left": 10,
+            "right": 10
+          }
+        },
+        "landscape": {
+          "assets": {
+            "resizable": "iphone_edgetoedge_landscape.pdf"
+          },
+          "items": [
+            {
+              "inputs": {
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right"
+              },
+              "frame": {
+                "x": 50,
+                "y": 188,
+                "width": 99,
+                "height": 99
+              },
+              "extendedEdges": {
+                "top": 30,
+                "bottom": 35,
+                "left": 50,
+                "right": 30
+              }
+            },
+            {
+              "inputs": [
+                "a"
+              ],
+              "frame": {
+                "x": 515,
+                "y": 250,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 20,
+                "right": 2
+              }
+            },
+            {
+              "inputs": [
+                "b"
+              ],
+              "frame": {
+                "x": 560,
+                "y": 226,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 2,
+                "right": 3
+              }
+            },
+            {
+              "inputs": [
+                "c"
+              ],
+              "frame": {
+                "x": 606,
+                "y": 208,
+                "width": 41,
+                "height": 41
+              },
+              "extendedEdges": {
+                "left": 2,
+                "right": 50
+              }
+            },
+            {
+              "inputs": [
+                "start"
+              ],
+              "frame": {
+                "x": 314,
+                "y": 284,
+                "width": 65,
+                "height": 25
+              },
+              "extendedEdges": {
+                "bottom": 12
+              }
+            },
+            {
+              "inputs": [
+                "menu"
+              ],
+              "frame": {
+                "x": 29,
+                "y": 14,
+                "width": 65,
+                "height": 25
+              },
+              "extendedEdges": {
+                "top": 15,
+                "left": 30
+              }
+            }
+          ],
+          "mappingSize": {
+            "width": 693,
+            "height": 320
+          },
+          "extendedEdges": {
+            "top": 10,
+            "bottom": 10,
+            "left": 10,
+            "right": 10
+          },
+          "translucent": true
+        }
+      }
+    },
+    "ipad": {
+      "standard": {
+        "portrait": {
+          "assets": {
+            "resizable": "ipad_portrait.pdf"
+          },
+                    "items": [
+                        {
+                            "inputs": {
+                                "up": "up",
+                                "down": "down",
+                                "left": "left",
+                                "right": "right"
+                            },
+                            "frame": {
+                                "x": 87,
+                                "y": 112,
+                                "width": 178,
+                                "height": 178
+                            },
+                            "extendedEdges": {
+                                "top": 40,
+                                "bottom": 40,
+                                "left": 60,
+                                "right": 40
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "a"
+                            ],
+                            "frame": {
+                                "x": 709,
+                                "y": 230,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 30,
+                                "right": 2
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "b"
+                            ],
+                            "frame": {
+                                "x": 788,
+                                "y": 187,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 5
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "c"
+                            ],
+                            "frame": {
+                                "x": 872,
+                                "y": 154,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 4,
+                                "right": 50
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "start"
+                            ],
+                            "frame": {
+                                "x": 733,
+                                "y": 88,
+                                "width": 82,
+                                "height": 49
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "menu"
+                            ],
+                            "frame": {
+                                "x": 50,
+                                "y": 350,
+                                "width": 40,
+                                "height": 40
+                            },
+                            "extendedEdges": {
+                                "right": 60
+                            }
+                        }
+                    ],
+          "mappingSize": {
+            "width": 1024,
+            "height": 429
+          },
+          "extendedEdges": {
+            "top": 20,
+            "bottom": 20,
+            "left": 20,
+            "right": 20
+          }
+        },
+        "landscape": {
+          "assets": {
+            "resizable": "ipad_landscape.pdf"
+          },
+          "items": [
+            {
+              "inputs": {
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right"
+              },
+              "frame": {
+                "x": 96,
+                "y": 749,
+                "width": 179,
+                "height": 179
+              },
+              "extendedEdges": {
+                "left": 100,
+                "top": 50,
+                "right": 50,
+                "bottom": 50
+              }
+            },
+            {
+              "inputs": [
+                "a"
+              ],
+              "frame": {
+                "x": 1041,
+                "y": 860,
+                "width": 75,
+                "height": 75
+              },
+              "extendedEdges": {
+                "left": 40,
+                "right": 3
+              }
+            },
+            {
+              "inputs": [
+                "b"
+              ],
+              "frame": {
+                "x": 1121,
+                "y": 817,
+                "width": 75,
+                "height": 75
+              },
+              "extendedEdges": {
+                "left": 3,
+                "right": 5
+              }
+            },
+            {
+              "inputs": [
+                "c"
+              ],
+              "frame": {
+                "x": 1204,
+                "y": 784,
+                "width": 75,
+                "height": 75
+              },
+              "extendedEdges": {
+                "left": 5,
+                "right": 90
+              }
+            },
+            {
+              "inputs": [
+                "start"
+              ],
+              "frame": {
+                "x": 625,
+                "y": 922,
+                "width": 116,
+                "height": 43
+              }
+            },
+            {
+              "inputs": [
+                "menu"
+              ],
+              "frame": {
+                "x": 59,
+                "y": 59,
+                "width": 116,
+                "height": 43
+              },
+              "extendedEdges": {
+                "top": 60,
+                "left": 60
+              }
+            }
+          ],
+          "mappingSize": {
+            "width": 1366,
+            "height": 1024
+          },
+          "extendedEdges": {
+            "top": 20,
+            "bottom": 20,
+            "left": 20,
+            "right": 20
+          },
+          "translucent": true
+        }
+      },
+      "splitView": {
+        "portrait": {
+          "assets": {
+            "resizable": "ipad_portrait.pdf"
+          },
+          "items": [
+            {
+              "inputs": {
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right"
+              },
+              "frame": {
+                "x": 56,
+                "y": 106,
+                "width": 156,
+                "height": 156
+              },
+              "extendedEdges": {
+                "top": 30,
+                "bottom": 73,
+                "left": 60,
+                "right": 30
+              }
+            },
+            {
+              "inputs": [
+                "a"
+              ],
+              "frame": {
+                "x": 700,
+                "y": 157,
+                "width": 55,
+                "height": 55
+              },
+              "extendedEdges": {
+                "top": 10,
+                "bottom": 10,
+                "left": 0,
+                "right": 45
+              }
+            },
+            {
+              "inputs": [
+                "b"
+              ],
+              "frame": {
+                "x": 635,
+                "y": 207,
+                "width": 55,
+                "height": 55
+              },
+              "extendedEdges": {
+                "top": 0,
+                "bottom": 73,
+                "left": 10,
+                "right": 10
+              }
+            },
+            {
+              "inputs": [
+                "c"
+              ],
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "width": 167,
+                "height": 45
+              }
+            },
+            {
+              "inputs": [
+                "z"
+              ],
+              "frame": {
+                "x": 633,
+                "y": 0,
+                "width": 167,
+                "height": 45
+              }
+            },
+            {
+              "inputs": [
+                "start"
+              ],
+              "frame": {
+                "x": 442,
+                "y": 218,
+                "width": 60,
+                "height": 53
+              },
+              "extendedEdges": {
+                "left": 8
+              }
+            },
+            {
+              "inputs": [
+                "select"
+              ],
+              "frame": {
+                "x": 366,
+                "y": 218,
+                "width": 60,
+                "height": 53
+              },
+              "extendedEdges": {
+                "left": 8,
+                "right": 8
+              }
+            },
+            {
+              "inputs": [
+                "menu"
+              ],
+              "frame": {
+                "x": 290,
+                "y": 218,
+                "width": 60,
+                "height": 53
+              },
+              "extendedEdges": {
+                "right": 8
+              }
+            },
+            {
+              "inputs": [
+                "y"
+              ],
+              "frame": {
+                "x": 570,
+                "y": 156,
+                "width": 55,
+                "height": 55
+              },
+              "extendedEdges": {
+                "top": 10,
+                "bottom": 10,
+                "right": 0
+              }
+            },
+            {
+              "inputs": [
+                "x"
+              ],
+              "frame": {
+                "x": 635,
+                "y": 106,
+                "width": 55,
+                "height": 55
+              },
+              "extendedEdges": {
+                "bottom": 0,
+                "left": 10,
+                "right": 10
+              }
+            }
+          ],
+          "mappingSize": {
+            "width": 800,
+            "height": 335
+          },
+          "extendedEdges": {
+            "top": 20,
+            "bottom": 20,
+            "left": 20,
+            "right": 20
+          }
+        },
+        "landscape": {
+          "assets": {
+            "resizable": "ipad_landscape_splitview.pdf"
+          },
+                    "items": [
+                        {
+                            "inputs": {
+                                "up": "up",
+                                "down": "down",
+                                "left": "left",
+                                "right": "right"
+                            },
+                            "frame": {
+                                "x": 97,
+                                "y": 112,
+                                "width": 178,
+                                "height": 178
+                            },
+                            "extendedEdges": {
+                                "top": 40,
+                                "bottom": 40,
+                                "left": 60,
+                                "right": 40
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "a"
+                            ],
+                            "frame": {
+                                "x": 1041,
+                                "y": 230,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 30,
+                                "right": 2
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "b"
+                            ],
+                            "frame": {
+                                "x": 1120,
+                                "y": 187,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 2,
+                                "right": 5
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "c"
+                            ],
+                            "frame": {
+                                "x": 1204,
+                                "y": 154,
+                                "width": 75,
+                                "height": 75
+                            },
+                            "extendedEdges": {
+                                "left": 4,
+                                "right": 50
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "start"
+                            ],
+                            "frame": {
+                                "x": 1065,
+                                "y": 88,
+                                "width": 82,
+                                "height": 49
+                            }
+                        },
+                        {
+                            "inputs": [
+                                "menu"
+                            ],
+                            "frame": {
+                                "x": 60,
+                                "y": 350,
+                                "width": 40,
+                                "height": 40
+                            },
+                            "extendedEdges": {
+                                "right": 60
+                            }
+                        }
+                    ],
+          "mappingSize": {
+            "width": 1366,
+            "height": 429
+          },
+          "extendedEdges": {
+            "top": 20,
+            "bottom": 20,
+            "left": 20,
+            "right": 20
+          },
+          "translucent": false
+        }
+      }
+    }
+  }
+}

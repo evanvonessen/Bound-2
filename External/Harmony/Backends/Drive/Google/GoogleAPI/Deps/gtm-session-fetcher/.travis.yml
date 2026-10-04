@@ -1,0 +1,19 @@
+language: objective-c
+osx_image: xcode9.4
+env:
+  - MODE=OSX CFG=Debug
+  - MODE=OSX CFG=Release
+  - MODE=iOS CFG=Debug
+  - MODE=iOS CFG=Release
+  - MODE=tvOS CFG=Debug
+  - MODE=tvOS CFG=Release
+  - MODE=watchOS CFG=Debug
+  - MODE=watchOS CFG=Release
+script:
+  - ./.travis.sh "${MODE}" "${CFG}"
+notifications:
+  email: false
+
+branches:
+  except:
+    - google

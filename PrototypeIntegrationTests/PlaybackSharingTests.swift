@@ -327,3 +327,53 @@ extension PlaybackSharingTests {
         XCTAssertEqual(stops.count, 1); XCTAssertEqual(core.state, .stopped)
     }
 }
+
+@MainActor private final class DisposalProbeTransport: FriendSharingTransport {
+    var publishedFrames = 0
+    var receivedFrames = 0
+    var stopped = false
+    var stoppedOnMain = false
+    func start(configuration: FriendSharingConfiguration, remoteView: UIView, event: @escaping @MainActor (FriendSharingEvent) -> Void) { event(.joined) }
+    func stop() { stopped = true; stoppedOnMain = Thread.isMainThread }
+    func send(_ frame: SharingFrame, completion: @escaping @MainActor (Result<Void, SharingFailure>) -> Void) -> any SharingCancellation { Pending() }
+}
+/// The box transfers its sole owner to the detached release task, then is never read again.
+private final class DisposalReleaseBox: @unchecked Sendable {
+    var owner: FriendSharingSession?
+    init(_ owner: FriendSharingSession) { self.owner = owner }
+}
+
+extension PlaybackSharingTests {
+    func testMainAndOffMainDisposalRunsCapturedCleanupWithoutRetainingOwner() async throws {
+        for offMain in [false, true] {
+            let transport = DisposalProbeTransport()
+            var owner: FriendSharingSession? = FriendSharingSession(configuration: configuration(), transport: transport, authenticatedMode: false)
+            owner?.start()
+            weak var released = owner
+            if offMain {
+                let box = DisposalReleaseBox(try XCTUnwrap(owner)); owner = nil
+                await Task.detached { box.owner = nil }.value
+            } else { owner = nil }
+            XCTAssertNil(released, "Cleanup must not capture the disposed session")
+            BoundMainActorDisposal.drainPending()
+            XCTAssertTrue(transport.stopped)
+            XCTAssertTrue(transport.stoppedOnMain)
+        }
+    }
+    func testCapturedCleanupDrainsBeforeReplacementAndAllowsNestedCancellation() async {
+        var events: [Int] = []
+        BoundMainActorDisposal.enqueue {
+            events.append(1)
+            BoundMainActorDisposal.enqueue { events.append(2) }
+            BoundMainActorDisposal.drainPending() // Reentrant cancellation is harmless.
+        }
+        BoundMainActorDisposal.drainPending()
+        XCTAssertEqual(events, [1, 2])
+        let timer = FriendSharingTimer(after: 10) { XCTFail("Cancelled timer fired") }
+        timer.cancel()
+        let link = FriendSharingDisplayLink { _ in XCTFail("Cancelled display link fired") }
+        link.cancel()
+        let onboarding = FriendOnboarding()
+        onboarding.close()
+    }
+}

@@ -33,6 +33,3 @@ xcuserdata
 
 ## Project-Specific
 Delta.playground
-
-# Existing public app configuration is prepared locally, never account credentials.
-Delta/Bound/cloud-configuration.json

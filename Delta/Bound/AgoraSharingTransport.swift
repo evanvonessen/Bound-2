@@ -394,10 +394,30 @@ final class AgoraSharingTransport: FriendSharingTransport {
         return result
     }
 
-    isolated deinit { stop() }
+    deinit {
+        // Keep SDK/UI disposal on main without an isolated-deinit runtime trampoline.
+        // Normal stop() remains synchronous; this fallback also covers off-main release.
+        let engine = engine, callbacks = callbacks, remoteView = remoteView
+        let presenter = presenter, remoteUID = remoteUID
+        BoundMainActorDisposal.enqueue {
+            callbacks?.resetFrames(enabled: false)
+            guard let engine else { return }
+            engine.setVideoFrameDelegate(nil)
+            presenter.clear()
+            let canvas = AgoraRtcVideoCanvas(); canvas.uid = remoteUID
+            engine.setupRemoteVideo(canvas)
+            remoteView?.subviews.forEach { $0.removeFromSuperview() }
+            remoteView?.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+            engine.muteLocalVideoStream(true)
+            engine.leaveChannel(nil)
+            engine.delegate = nil
+            AgoraRtcEngineKit.destroy()
+        }
+    }
 
     func start(configuration: FriendSharingConfiguration, remoteView: UIView,
                event: @escaping @MainActor (FriendSharingEvent) -> Void) {
+        BoundMainActorDisposal.drainPending()
         stop()
         lastFailure = [:]; lastConnectionState = nil; lastConnectionReason = nil
         joinResult = nil; lastPushAccepted = nil; attemptedFrames = 0; lastAttemptedSequence = 0
@@ -577,6 +597,7 @@ final class AgoraSharingTransport: FriendSharingTransport {
     func renewToken(_ token: String) -> Bool { engine?.renewToken(token) == 0 }
 
     func stop() {
+        BoundMainActorDisposal.drainPending()
         generation = UUID(); joined = false; recovering = false; eventHandler = nil; setupResult = nil
         callbacks?.resetFrames(enabled: false)
         if let engine {

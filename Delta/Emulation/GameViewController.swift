@@ -556,7 +556,10 @@ extension GameViewController
         applyBoundControlPlacement()
         super.viewDidLayoutSubviews()
         boundCompanion.layoutNativeCompanion(in: view.bounds, safeArea: view.safeAreaInsets)
-        if controllerLayoutBounds != nil { view.bringSubviewToFront(controllerView); boundCompanion.bringControlsToFront() }
+        if controllerLayoutBounds != nil { view.bringSubviewToFront(controllerView) }
+        // Native layout can change the controller bounds after rotation or Reset.
+        // Refresh companion/Menu geometry only after those real frames settle.
+        boundCompanion.bringControlsToFront()
         gameView.accessibilityIdentifier = "bound.game-screen"
         gameView.isAccessibilityElement = true
         gameView.accessibilityLabel = "Your gameplay screen"
@@ -627,28 +630,16 @@ extension GameViewController
             pauseViewController.fastForwardItem?.action = { [unowned self] item in
                 self.performFastForwardAction(activate: item.isSelected)
             }
-            pauseViewController.screenshotItem?.action = { [unowned self] item in
-                self.performScreenshotAction()
+            pauseViewController.sustainButtonsItem = MenuItem(text: boundCompanion.account.session == nil ? "Friend Login" : "Friends", image: UIImage(systemName: "person.2.fill")) { [weak self, weak pauseViewController] item in
+                item.isSelected = false
+                guard let self, let presenter = pauseViewController else { return }
+                self.boundCompanion.presentFriends(from: presenter)
             }
-            
-            pauseViewController.sustainButtonsItem?.isSelected = gameController.sustainedInputs.count > 0
-            pauseViewController.sustainButtonsItem?.action = { [unowned self, unowned pauseViewController] item in
-                
-                for input in gameController.sustainedInputs.keys
-                {
-                    gameController.unsustain(input)
-                }
-                
-                if item.isSelected
-                {
-                    self.showSustainButtonView()
-                    pauseViewController.dismiss()
-                }
-                
-                // Re-set gameController as pausingGameController.
-                self.pausingGameController = gameController
+            pauseViewController.screenshotItem = MenuItem(text: "Bound Settings", image: UIImage(systemName: "gearshape.fill")) { [weak self, weak pauseViewController] item in
+                item.isSelected = false
+                guard let self, let presenter = pauseViewController else { return }
+                self.boundCompanion.presentSettings(from: presenter)
             }
-            
             if self.emulatorCore?.deltaCore.supportedRates.upperBound == 1
             {
                 pauseViewController.fastForwardItem = nil
@@ -2830,14 +2821,15 @@ extension GameViewController {
         }
         return AVMakeRect(aspectRatio: aspect, insideRect: bounds)
     }
-    func showBoundControlPlacement() {
-        guard presentedViewController == nil, let current = controllerView.controllerSkin,
+    func showBoundControlPlacement(from presenter: UIViewController? = nil) {
+        let presenting = presenter ?? self
+        guard presenting.presentedViewController == nil, let current = controllerView.controllerSkin,
               let traits = controllerView.controllerSkinTraits else { return }
         let base = unwrappedBoundControllerSkin(current)
         boundCompanion.cancelInteractions()
         let editor = BoundControlPlacementEditor(skin: base, traits: traits, canvasSize: view.bounds.size, landscape: view.bounds.width > view.bounds.height, sourceFrame: nativeBoundControllerFrame(base: base), saved: { [weak self] in self?.applyBoundControlPlacement(); self?.view.setNeedsLayout() })
         let navigation = UINavigationController(rootViewController: editor)
         navigation.modalPresentationStyle = .fullScreen
-        present(navigation, animated: true)
+        presenting.present(navigation, animated: true)
     }
 }

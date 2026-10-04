@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import Combine
 import DeltaCore
 
 @MainActor
@@ -50,7 +51,10 @@ final class BoundCompanionCoordinator {
     let state: BoundCompanionState
     init(state: BoundCompanionState? = nil) { self.state = state ?? BoundCompanionState() }
     private var host: UIHostingController<BoundCompanionPanel>?
-    private var controls: UIHostingController<BoundCompanionControls>?
+    private var controls: BoundCompanionCycleButton?
+    private var subscriptions = Set<AnyCancellable>()
+    private var nativeMenuAccessibility: BoundNativeMenuAccessibilityElement?
+    private weak var settingsPresenter: UIViewController?
     private var overlay: BoundOverlayView?
     private weak var owner: GameViewController?
     private weak var boundCore: EmulatorCore?
@@ -97,6 +101,10 @@ final class BoundCompanionCoordinator {
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.background() })
         let panel = BoundCompanionPanel(sharing: sharing, state: state, gameID: (owner.game as? Game)?.identifier ?? "", editingChanged: { [weak self] in self?.notesEditing($0) })
         let host = UIHostingController(rootView: panel)
+        // The coordinator already positions the overlay inside the game viewport.
+        // A second inherited home-indicator inset would shrink the visible video
+        // and shift the bottom-corner content above its actual PiP frame.
+        host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         let overlay = BoundOverlayView()
         overlay.accessibilityIdentifier = "bound.companion-container"
@@ -107,10 +115,18 @@ final class BoundCompanionCoordinator {
         }
         owner.addChild(host); owner.view.addSubview(overlay); overlay.addSubview(host.view); host.didMove(toParent: owner)
         self.overlay = overlay; self.host = host
-        let controls = UIHostingController(rootView: BoundCompanionControls(sharing: sharing, onboarding: onboarding, account: account, state: state))
-        controls.view.backgroundColor = .clear
-        owner.addChild(controls); owner.view.addSubview(controls.view); controls.didMove(toParent: owner)
-        self.controls = controls
+        let controls = BoundCompanionCycleButton()
+        controls.cycle = { [weak self] in
+            guard let self else { return }
+            self.owner?.view.endEditing(true)
+            self.cancelInteractions()
+            self.state.selected = (self.state.selected + 1) % 3
+            self.state.hidden = false; self.state.refresh()
+        }
+        owner.view.addSubview(controls); self.controls = controls
+        sharing.$joined.combineLatest(sharing.$active).sink { [weak self] joined, active in
+            self?.tap.setEnabled(joined && active)
+        }.store(in: &subscriptions)
         gestures = BoundPiPGestures(view: owner.view, shouldReceive: { [weak self] touch in self?.shouldReceive(touch) ?? false },
             moved: { [weak self] phase, offset, endX in self?.move(phase, offset: offset, endX: endX) },
             magnified: { [weak self] phase, scale in self?.resize(phase, scale: scale) },
@@ -155,7 +171,7 @@ final class BoundCompanionCoordinator {
         let horizontal = CGRect(x: safeArea.left, y: 0, width: max(1, bounds.width - safeArea.left - safeArea.right), height: bounds.height)
         if landscape {
             let game = AVMakeRect(aspectRatio: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2), insideRect: horizontal)
-            let viewport = game.intersection(bounds.inset(by: safeArea))
+            let viewport = game
             let base = CGSize(width: game.width * 0.36, height: game.width * 0.24)
             let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
             self.geometry = geometry
@@ -166,36 +182,32 @@ final class BoundCompanionCoordinator {
                 panel = CGRect(x: available.midX - min(400, available.width) / 2, y: available.minY + 4, width: min(400, available.width), height: max(100, min(230, bounds.height - keyboardHeight - available.minY - 8)))
             }
             overlay?.frame = panel
-            controls?.view.frame = CGRect(x: horizontal.midX - min(360, horizontal.width) / 2, y: max(safeArea.top, bounds.height - safeArea.bottom - 112), width: min(360, horizontal.width), height: 44)
             overlay?.isHidden = state.hidden
             overlay?.alpha = isEditingNotes ? 1 : liveOpacity ?? state.preferences.opacity(for: state.content)
             owner.gameScreenLayoutBounds = horizontal
             host?.view.frame = overlay?.bounds ?? .zero
             owner.view.bringSubviewToFront(overlay!)
-            owner.view.bringSubviewToFront(controls!.view)
+            layoutCycleButton(bounds: bounds, safeArea: safeArea)
             return bounds
         }
-        let width = horizontal.width
-        let controllerHeight = controllerSize.width > 0 && controllerSize.height > 0 ? width * controllerSize.height / controllerSize.width : width * 0.85625
-        let screenHeight = max(60, min(width / 1.5, (bounds.height - safeArea.top - controllerHeight - 56) / 2))
-        controls?.view.frame = CGRect(x: horizontal.minX, y: safeArea.top, width: width, height: 44)
-        let top = safeArea.top + 48
-        overlay?.frame = CGRect(x: horizontal.midX - (state.selected == 0 ? screenHeight * 1.5 : width) / 2, y: top, width: state.selected == 0 ? screenHeight * 1.5 : width, height: screenHeight)
+        let geometry = BoundPortraitScreenGeometry(bounds: bounds, safeTop: safeArea.top,
+            controllerSize: controllerSize, gameAspect: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2))
+        overlay?.frame = geometry.friend
+        if state.content != .friend { overlay?.frame = CGRect(x: bounds.minX, y: geometry.friend.minY, width: bounds.width, height: geometry.friend.height) }
         if isEditingNotes {
-            overlay?.frame.size.height = max(screenHeight, min(220, bounds.height - keyboardHeight - top - 8))
+            overlay?.frame.size.height = max(geometry.friend.height, min(220, bounds.height - keyboardHeight - geometry.friend.minY - 8))
         }
         overlay?.isHidden = false; overlay?.alpha = 1
         host?.view.frame = overlay?.bounds ?? .zero
-        let gameplay = CGRect(x: horizontal.minX, y: top + screenHeight + 8, width: width, height: max(1, bounds.height - top - screenHeight - 8))
-        owner.gameScreenLayoutBounds = nil
-        owner.view.bringSubviewToFront(overlay!); owner.view.bringSubviewToFront(controls!.view)
-        return gameplay
+        owner.gameScreenLayoutBounds = geometry.game
+        owner.view.bringSubviewToFront(overlay!); layoutCycleButton(bounds: bounds, safeArea: safeArea)
+        return nil // Native Delta's full-viewport controller layout remains untouched.
     }
     /// Called after native Delta layout, so rotation and custom skins use the actual game frame.
     func layoutNativeCompanion(in bounds: CGRect, safeArea: UIEdgeInsets) {
         guard BoundAppearancePreferences().screenLayout == .delta, let owner, let overlay, let controls else { return }
         let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
-        let viewport = game.intersection(bounds.inset(by: safeArea))
+        let viewport = state.landscape ? game : game.intersection(bounds.inset(by: safeArea))
         guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
         let base = CGSize(width: viewport.width * 0.36, height: viewport.width * 0.24)
         let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
@@ -209,24 +221,72 @@ final class BoundCompanionCoordinator {
         }
         overlay.frame = panel; host?.view.frame = overlay.bounds
         overlay.isHidden = state.hidden; overlay.alpha = isEditingNotes ? 1 : liveOpacity ?? state.preferences.opacity(for: state.content)
-        let width = min(360, bounds.width - safeArea.left - safeArea.right)
-        let y = isEditingNotes ? safeArea.top : state.landscape ? max(safeArea.top, game.maxY - 112) : max(safeArea.top, game.minY - 48)
-        controls.view.frame = CGRect(x: bounds.midX - width / 2, y: y, width: width, height: 44)
-        owner.view.bringSubviewToFront(overlay); owner.view.bringSubviewToFront(controls.view)
+        owner.view.bringSubviewToFront(overlay); layoutCycleButton(bounds: bounds, safeArea: safeArea)
     }
-    func bringControlsToFront() { if let controls, let owner { owner.view.bringSubviewToFront(controls.view) } }
+    func bringControlsToFront() {
+        guard let owner else { return }
+        layoutCycleButton(bounds: owner.view.bounds, safeArea: owner.view.safeAreaInsets)
+    }
+    private func layoutCycleButton(bounds: CGRect, safeArea: UIEdgeInsets) {
+        guard let owner, let controls, let skin = owner.controllerView.controllerSkin,
+              let traits = owner.controllerView.controllerSkinTraits,
+              let menu = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == "menu" }) }) else { controls?.isHidden = true; return }
+        let local = menu.frame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height))
+        let frame = owner.controllerView.convert(local, to: owner.view)
+        let menuAccessibility = nativeMenuAccessibility ?? BoundNativeMenuAccessibilityElement(accessibilityContainer: owner.controllerView)
+        menuAccessibility.accessibilityIdentifier = "bound.native-menu"
+        menuAccessibility.accessibilityLabel = "Menu"
+        menuAccessibility.accessibilityTraits = .button
+        menuAccessibility.accessibilityFrameInContainerSpace = local
+        menuAccessibility.activate = { [weak owner] in
+            guard let owner else { return false }
+            owner.controllerView.cancelTouchInputs()
+            owner.gameViewController(owner, handleMenuInputFrom: owner.controllerView)
+            return true
+        }
+        owner.controllerView.accessibilityElements = [menuAccessibility]
+        nativeMenuAccessibility = menuAccessibility
+        let controller = owner.controllerView.convert(owner.controllerView.bounds, to: owner.view)
+        let occupied = owner.controllerView.controlHitFrames.map { owner.controllerView.convert($0, to: owner.view) }
+        controls.isHidden = false
+        controls.configure(menuFrame: frame, controllerFrame: controller, landscape: state.landscape,
+            minimal: BoundAppearancePreferences().theme == .minimal, content: state.content,
+            canvas: bounds.inset(by: safeArea), occupied: occupied)
+        owner.view.bringSubviewToFront(controls)
+    }
+    func presentFriends(from presenter: UIViewController) {
+        cancelInteractions(); state.showingFriends = true
+        let host = UIHostingController(rootView: BoundFriendsSheet(sharing: sharing, onboarding: onboarding, account: account, closed: { [weak self] in self?.state.showingFriends = false }))
+        presenter.present(host, animated: true)
+    }
+    func presentSettings(from presenter: UIViewController) {
+        cancelInteractions(); state.showingSettings = true; settingsPresenter = presenter
+        let host = UIHostingController(rootView: BoundPiPSettings(state: state, closed: { [weak self] in
+            guard let self else { return }; self.state.showingSettings = false
+            if self.state.pendingControlEditor { self.state.pendingControlEditor = false
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, let presenter = self.settingsPresenter else { return }
+                    if let modal = presenter.presentedViewController, let transition = modal.transitionCoordinator {
+                        transition.animate(alongsideTransition: nil) { [weak self, weak presenter] _ in
+                            guard let presenter else { return }; self?.owner?.showBoundControlPlacement(from: presenter)
+                        }
+                    } else { self.owner?.showBoundControlPlacement(from: presenter) }
+                }
+            }
+        }))
+        presenter.present(host, animated: true)
+    }
     func cancelInteractions() {
         gestures?.cancel(); translation = .zero; pinchScale = 1; liveOpacity = nil
         owner?.controllerView.cancelTouchInputs()
     }
     private func shouldReceive(_ touch: UITouch) -> Bool {
-        guard (state.landscape || BoundAppearancePreferences().screenLayout == .delta), !isEditingNotes, !state.showingFriends, !state.showingSettings,
+        guard (state.landscape || (BoundAppearancePreferences().screenLayout == .delta && state.content != .types)), !isEditingNotes, !state.showingFriends, !state.showingSettings,
               let owner, let controls, !state.hidden else { return false }
         let p = touch.location(in: owner.view)
-        guard !controls.view.frame.contains(p), owner.gameView.convert(owner.gameView.bounds, to: owner.view).contains(p) else { return false }
+        guard !controls.frame.contains(p), owner.gameView.convert(owner.gameView.bounds, to: owner.view).contains(p) else { return false }
         let local = touch.location(in: owner.controllerView)
         if owner.controllerView.controlHitFrames.contains(where: { $0.contains(local) }) { return false }
-        if state.content != .friend, overlay?.frame.contains(p) == true { return false }
         return true
     }
     private func move(_ phase: UIGestureRecognizer.State, offset: CGSize, endX: CGFloat) {
@@ -300,39 +360,20 @@ struct BoundCompanionPanel: View {
             } else if state.selected == 1 {
                 BoundNotesEditor(gameID: gameID, editingChanged: editingChanged).id(gameID)
             } else {
-                ScrollView([.horizontal, .vertical]) {
-                    Image("PokemonTypeChart").resizable().scaledToFit().frame(width: 600).accessibilityLabel("Pokémon type effectiveness chart")
-                }.accessibilityIdentifier("bound.type-chart")
+                if state.landscape {
+                    ScrollView([.horizontal, .vertical]) {
+                        Image("PokemonTypeChart").resizable().scaledToFit().frame(width: 600).accessibilityLabel("Pokémon type effectiveness chart")
+                    }.accessibilityIdentifier("bound.type-chart")
+                } else { BoundTypeChartView() }
             }
         }.background(Color(uiColor: .secondarySystemBackground)).clipShape(RoundedRectangle(cornerRadius: state.landscape ? 8 : 4))
         .onChange(of: sharing.joined) { _ in state.refresh() }
     }
 }
 
-private struct BoundCompanionControls: View {
-    @ObservedObject var sharing: FriendSharingSession
-    @ObservedObject var onboarding: FriendOnboarding
-    @ObservedObject var account: BoundFriendAccount
-    @ObservedObject var state: BoundCompanionState
-    var body: some View {
-        HStack(spacing: 4) {
-            Picker("Companion panel", selection: $state.selected) {
-                Text("Friend").tag(0); Text("Notes").tag(1); Text("Types").tag(2)
-            }.pickerStyle(.segmented).accessibilityIdentifier("bound.panel-toggle")
-            Button { state.selectionChanged?(); state.showingFriends = true } label: { Image(systemName: "person.2.fill").frame(width: 40, height: 40) }.accessibilityLabel("Friends").accessibilityIdentifier("bound.friends")
-            Button { state.selectionChanged?(); state.showingSettings = true } label: { Image(systemName: "gearshape.fill").frame(width: 40, height: 40) }.accessibilityLabel("Playback layout settings").accessibilityIdentifier("bound.layout-settings")
-        }.padding(.horizontal, 4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .sheet(isPresented: $state.showingFriends) { BoundFriendsSheet(sharing: sharing, onboarding: onboarding, account: account) }
-        .sheet(isPresented: $state.showingSettings, onDismiss: { if state.pendingControlEditor { state.pendingControlEditor = false; state.editControls?() } }) { BoundPiPSettings(state: state) }
-        .onChange(of: state.selected) { _ in state.selectionChanged?(); state.hidden = false; state.refresh() }
-        .onChange(of: sharing.joined) { _ in sharingEnabled() }
-        .onChange(of: sharing.active) { _ in sharingEnabled() }
-    }
-    private func sharingEnabled() { state.sharingChanged?(sharing.joined && sharing.active) }
-}
-
 private struct BoundPiPSettings: View {
     @ObservedObject var state: BoundCompanionState
+    var closed: () -> Void = {}
     @Environment(\.dismiss) var dismiss
     var body: some View {
         NavigationStack {
@@ -363,7 +404,7 @@ private struct BoundPiPSettings: View {
                     } else { Text("No emulation package is active.") }
                 }
                 Section("Picture in picture") {
-                    Text("In Bound landscape or Delta Default, drag with one finger to move. Pinch with two fingers to resize. Slide three fingers up or down to adjust opacity. Swipe to an edge to hide; select a panel to show it again.")
+                    Text("In landscape, drag any panel with one finger to move it, pinch with two fingers to resize, or slide three fingers vertically to change opacity. Swipe to an edge to hide; tap the companion button to show the next panel. Delta portrait keeps these gestures for Friend and Notes; the portrait Types panel zooms and pans its chart content.")
                     ForEach(BoundPiPContent.allCases, id: \.rawValue) { content in
                         VStack(alignment: .leading) {
                             Text("\(content.rawValue.capitalized) transparency: \(Int(state.preferences.transparency(for: content) * 100))%")
@@ -375,11 +416,11 @@ private struct BoundPiPSettings: View {
                 Section("Delta controls") {
                     Text("Delta's placement is the default. Customize positions separately for portrait and landscape, or reset to Delta.")
                 }
-            }.navigationTitle("Playback layout").toolbar {
+            }.navigationTitle("Bound Settings").toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Buttons") { state.pendingControlEditor = true; dismiss() }.accessibilityLabel("Button placement").accessibilityIdentifier("bound.button-placement") }
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-        }
+        }.onDisappear(perform: closed)
     }
 }
 
@@ -430,6 +471,7 @@ private struct BoundFriendsSheet: View {
     @State private var password = ""
     @State private var name = ""
     @State private var invite = ""
+    var closed: () -> Void = {}
     var body: some View {
         NavigationStack {
             Form {
@@ -473,6 +515,6 @@ private struct BoundFriendsSheet: View {
                 }
             }.navigationTitle("Friends")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }.onAppear { onboarding.open(sharing: sharing, existing: { account.session }) }
+        }.onAppear { onboarding.open(sharing: sharing, existing: { account.session }) }.onDisappear(perform: closed)
     }
 }

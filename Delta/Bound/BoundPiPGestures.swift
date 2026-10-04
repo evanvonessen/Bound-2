@@ -10,6 +10,7 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
     private let magnified: (UIGestureRecognizer.State, CGFloat) -> Void
     private let opacityChanged: (UIGestureRecognizer.State, CGFloat) -> Void
     private var recognizers: [UIGestureRecognizer] = []
+    private var suppressCurrentPinch = false
 
     init(view: UIView, shouldReceive: @escaping (UITouch) -> Bool,
          moved: @escaping (UIGestureRecognizer.State, CGSize, CGFloat) -> Void,
@@ -46,7 +47,14 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
         let movement = gesture.translation(in: view)
         moved(gesture.state, CGSize(width: movement.x, height: movement.y), gesture.location(in: view).x)
     }
-    @objc private func pinch(_ gesture: UIPinchGestureRecognizer) { magnified(gesture.state, gesture.scale) }
+    @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
+        if gesture.state == .began { suppressCurrentPinch = false }
+        if gesture.state == .began || gesture.state == .changed {
+            if gesture.numberOfTouches != 2 { suppressCurrentPinch = true; magnified(.cancelled, 1) }
+        }
+        guard !suppressCurrentPinch else { return }
+        magnified(gesture.state, gesture.scale)
+    }
     @objc private func opacity(_ gesture: UIPanGestureRecognizer) {
         opacityChanged(gesture.state, gesture.translation(in: view).y)
     }
