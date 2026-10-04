@@ -34,12 +34,10 @@ struct SettingsView: View
     var body: some View {
         NavigationStack {
             Form {
-                PatreonSection()
                 ControlsSection()
                 EmulationSection()
                 OnlineMultiplayerSection()
                 DisplaySection()
-                ServicesSection()
                 MiscellaneousSection()
                 CreditsSection()
                 SupportSection()
@@ -363,6 +361,7 @@ private struct MiscellaneousSection: View
                 SettingsRow(label: Text("Minor"), systemImage: "slider.horizontal.3", color: .gray)
             }
 
+            #if DEBUG
             NavigationLink {
                 AdvancedSettingsView()
             } label: {
@@ -376,6 +375,7 @@ private struct MiscellaneousSection: View
                     SettingsBadge(text: "Patrons")
                 }
             }
+            #endif
         }
     }
 }

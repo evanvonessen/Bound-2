@@ -503,8 +503,10 @@ final class ReleaseSmokeUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Experimental Features"].exists)
         XCTAssertFalse(app.staticTexts["Delta Sync"].exists)
         XCTAssertFalse(app.staticTexts["Patreon"].exists)
+        let close = app.buttons["Close"].firstMatch
         let done = app.buttons["Done"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 10)); done.tap()
+        if close.waitForExistence(timeout: 5) { close.tap() }
+        else { XCTAssertTrue(done.waitForExistence(timeout: 10)); done.tap() }
         // A generated game is imported by the fixture setup, never a personal ROM.
         let cell = app.collectionViews.cells.firstMatch
         XCTAssertTrue(cell.waitForExistence(timeout: 20)); cell.tap()
