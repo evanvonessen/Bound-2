@@ -3486,6 +3486,7 @@
 				PRODUCT_MODULE_NAME = BoundCompanionUITests;
 				PRODUCT_NAME = BoundCompanionUITests;
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = Delta;
 			};
