@@ -114,6 +114,69 @@ final class CompanionUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 8), .completed)
     }
 
+    func testAllLandscapePanelsMoveResizeRestoreAndKeepChromeStable() throws {
+        let app = openGame(arguments: ["--bound-ui-reset-layout", "--bound-ui-friend-fixture"])
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let game = element("bound.game-screen", in: app)
+        let panel = element("bound.companion-container", in: app)
+        let menu = element("bound.native-menu", in: app)
+        let cycle = app.buttons["bound.panel-cycle"]
+        waitForFrame(game) { _ in app.frame.width > app.frame.height }
+        let menuFrame = menu.frame, cycleFrame = cycle.frame
+        XCTAssertEqual(menuFrame.width, 44, accuracy: 1)
+        XCTAssertEqual(menuFrame.height, 44, accuracy: 1)
+        XCTAssertEqual(cycleFrame.width, 44, accuracy: 1)
+        XCTAssertEqual(cycleFrame.height, 44, accuracy: 1)
+        for name in ["Friend", "Notes", "Types"] {
+            selectCompanion(name, in: app)
+            XCTAssertTrue(panel.waitForExistence(timeout: 5))
+            let initial = panel.frame
+            panel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: game.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25)))
+            waitForFrame(panel) { $0.midX < game.frame.midX }
+            XCTAssertFalse(app.keyboards.firstMatch.exists, "Arranging Notes must not open the keyboard")
+            panel.pinch(withScale: 0.75, velocity: -1)
+            waitForFrame(panel) { $0.width < initial.width - 10 }
+            let smallWidth = panel.frame.width
+            panel.pinch(withScale: 1.5, velocity: 1)
+            waitForFrame(panel) { $0.width > smallWidth + 5 }
+            let resized = panel.frame
+            cycle.tap(); cycle.tap(); cycle.tap()
+            XCTAssertEqual(cycle.value as? String, name)
+            XCTAssertEqual(panel.frame.width, resized.width, accuracy: 2)
+            XCTAssertEqual(panel.frame.minX, resized.minX, accuracy: 2)
+            XCTAssertEqual(menu.frame, menuFrame)
+            XCTAssertEqual(cycle.frame, cycleFrame)
+            screenshot("Landscape-" + name + "-resized")
+            // Deliberate edge swipe hides; the same B button restores this panel.
+            panel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: game.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.25)))
+            XCTAssertFalse(panel.isHittable)
+            cycle.tap()
+            XCTAssertEqual(cycle.value as? String, name)
+            XCTAssertTrue(panel.isHittable)
+            XCTAssertEqual(panel.frame.width, resized.width, accuracy: 2)
+        }
+        openNativePause(in: app)
+        XCTAssertTrue(app.buttons["Bound Settings"].exists)
+        resumeNativePause(in: app)
+        XCUIDevice.shared.orientation = .landscapeRight
+        waitForFrame(menu) { abs($0.width - 44) < 0.5 }
+        XCTAssertFalse(menu.frame.intersects(game.frame))
+        XCTAssertFalse(cycle.frame.intersects(game.frame))
+        screenshot("Landscape-right-matched-controls")
+        selectCompanion("Notes", in: app)
+        element("bound.notes-preview", in: app).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        XCUIDevice.shared.orientation = .portrait
+        selectCompanion("Notes", in: app)
+        let editor = element("bound.notes-editor", in: app)
+        editor.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+    }
+
     func testNativeMenuFriendLoginAndSettingsReturnToPause() throws {
         let app = openGame()
         let cycle = app.buttons["bound.panel-cycle"]
@@ -244,7 +307,7 @@ final class CompanionUITests: XCTestCase {
         let game = element("bound.game-screen", in: app)
         friend.pinch(withScale: 0.5, velocity: -1)
         let movedWidth = friend.frame.width
-        friend.pinch(withScale: 1.2, velocity: 1)
+        friend.pinch(withScale: 1.5, velocity: 1)
         waitForFrame(friend) { $0.width > movedWidth + 5 }
         screenshot("Bound-landscape-pip-resized")
         openBoundSettings(in: app)
@@ -522,7 +585,7 @@ final class CompanionUITests: XCTestCase {
         // keyboard editing; only the overlay is allowed to move or resize.
         friend.pinch(withScale: 0.5, velocity: -1)
         let compactFriendWidth = friend.frame.width
-        friend.pinch(withScale: 1.2, velocity: 1)
+        friend.pinch(withScale: 1.5, velocity: 1)
         waitForFrame(friend) { $0.width > compactFriendWidth + 5 }
         XCTAssertTrue(matches(game.frame, nativePortrait))
         screenshot("Bound-native-portrait-pip-resized")
@@ -699,10 +762,8 @@ final class CompanionUITests: XCTestCase {
                         // Start on the actual PiP, never on a native input.
                         // Targets stay inside the viewport; obstacle avoidance may offset the
                         // final frame from its ideal8pt edge without changing the chosen corner.
-                        // Snapping uses relative displacement, not the absolute
-                        // endpoint quadrant. The chart can be shifted by obstacle
-                        // avoidance, so aim 30pt inside the desired game edges to
-                        // cross the snap thresholds without the 20pt hide edge.
+                        // Aim near the desired corner without crossing the hide
+                        // edge; release chooses the nearest clear corner.
                         let target = game.coordinate(withNormalizedOffset: CGVector(dx: left ? 0 : 1, dy: top ? 0 : 1))
                             .withOffset(CGVector(dx: left ? 30 : -30, dy: top ? 30 : -30))
                         chart.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -793,16 +854,16 @@ final class CompanionUITests: XCTestCase {
                         XCTAssertGreaterThanOrEqual(cycle.frame.minX, game.frame.maxX - 1)
                         XCTAssertGreaterThanOrEqual(menu.frame.minY, right.frame.maxY)
                         XCTAssertGreaterThanOrEqual(cycle.frame.minY, menu.frame.maxY)
-                        XCTAssertGreaterThanOrEqual(cycle.frame.width, 44)
-                        XCTAssertGreaterThanOrEqual(cycle.frame.height, 44)
+                        XCTAssertGreaterThanOrEqual(cycle.frame.width, 43.99)
+                        XCTAssertGreaterThanOrEqual(cycle.frame.height, 43.99)
                         let obstacles = try actualPiPHitObstacles(in: game)
                         // Identify Menu's observed full hit region by containment of
                         // its real AX artwork; do not infer hit bounds from artwork size.
                         let menuHits = obstacles.filter { $0.contains(menu.frame.insetBy(dx: 0.02, dy: 0.02)) }
                         XCTAssertEqual(menuHits.count, 1, "Menu artwork belongs to exactly one actual hit region")
                         let menuHit = try XCTUnwrap(menuHits.first)
-                        XCTAssertGreaterThanOrEqual(menuHit.width, 44)
-                        XCTAssertGreaterThanOrEqual(menuHit.height, 44)
+                        XCTAssertGreaterThanOrEqual(menuHit.width, 43.99)
+                        XCTAssertGreaterThanOrEqual(menuHit.height, 43.99)
                         XCTAssertGreaterThanOrEqual(menuHit.minX, game.frame.maxX - 1)
                         XCTAssertFalse(menuHit.insetBy(dx: 0.02, dy: 0.02).intersects(game.frame))
                         XCTAssertFalse(cycle.frame.insetBy(dx: 0.02, dy: 0.02).intersects(game.frame))

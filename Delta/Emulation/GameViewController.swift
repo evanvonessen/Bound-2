@@ -591,7 +591,6 @@ extension GameViewController
         gameplayLayoutBounds = boundCompanion.layout(in: view.bounds, safeArea: view.safeAreaInsets, controllerSize: nativeBoundControllerSize())
         applyBoundControlPlacement()
         super.viewDidLayoutSubviews()
-        boundCompanion.layoutNativeCompanion(in: view.bounds, safeArea: view.safeAreaInsets)
         if controllerLayoutBounds != nil { view.bringSubviewToFront(controllerView) }
         // Native layout can change the controller bounds after rotation or Reset.
         // Refresh companion/Menu geometry only after those real frames settle.

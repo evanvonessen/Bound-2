@@ -23,6 +23,7 @@ final class BoundMinimalControllerSkin: ControllerSkinProtocol {
             var result = item
             let center = CGPoint(x: item.frame.midX, y: item.frame.midY)
             let label = Self.label(for: item)
+            if label == "MENU", abs(item.frame.width*canvasSize.width-44) < 0.5, abs(item.frame.height*canvasSize.height-44) < 0.5 { return item }
             let width: CGFloat = label.count > 1 ? max(44, CGFloat(label.count) * 8 + 16) : 44
             let target = CGRect(x: center.x - width / 2 / canvasSize.width,
                                 y: center.y - 22 / canvasSize.height,
@@ -47,7 +48,8 @@ final class BoundMinimalControllerSkin: ControllerSkinProtocol {
                 let nativeFrame = item.frame.applying(.init(scaleX: canvasSize.width, y: canvasSize.height))
                 guard nativeFrame.width > 0, nativeFrame.height > 0 else { continue }
                 let label = Self.label(for: item)
-                let minWidth: CGFloat = label.count > 1 ? max(44, CGFloat(label.count) * 8 + 16) : 44
+                let compactMenu = label == "MENU" && abs(nativeFrame.width-44) < 0.5 && abs(nativeFrame.height-44) < 0.5
+                let minWidth: CGFloat = compactMenu ? 44 : label.count > 1 ? max(44, CGFloat(label.count) * 8 + 16) : 44
                 let drawingSize = item.kind == .button ? CGSize(width: max(nativeFrame.width, minWidth), height: max(nativeFrame.height, 44)) : nativeFrame.size
                 let frame = CGRect(x: nativeFrame.midX - drawingSize.width/2, y: nativeFrame.midY - drawingSize.height/2, width: drawingSize.width, height: drawingSize.height).insetBy(dx: 1, dy: 1)
                 let path: UIBezierPath

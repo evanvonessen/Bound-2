@@ -68,7 +68,8 @@ final class PiPTests: XCTestCase {
             XCTAssertEqual(clamp.x, viewport.maxX - 8 - layout.size.width/2)
             XCTAssertEqual(clamp.y, viewport.minY + 8 + layout.size.height/2)
         }
-        XCTAssertEqual(layout.destination(from: .topRight, translation: CGSize(width: -71, height: 56)), .bottomLeft)
+        XCTAssertEqual(layout.destination(from: .topRight, translation: CGSize(width: -71, height: 56)), .topRight)
+        XCTAssertEqual(layout.destination(from: .topRight, translation: CGSize(width: -300, height: 200)), .bottomLeft)
         XCTAssertEqual(layout.destination(from: .topRight, translation: CGSize(width: -70, height: 55)), .topRight)
         XCTAssertEqual(layout.hiddenSide(from: .topRight, translation: CGSize(width: 51, height: 0), endX: 681), .right)
         XCTAssertNil(layout.hiddenSide(from: .topRight, translation: CGSize(width: 50, height: 0), endX: 700))
@@ -97,6 +98,20 @@ final class PiPTests: XCTestCase {
             }
         }
     }
+    func testDraggingAcrossAnInputDoesNotTeleportBeforeRelease() {
+        let layout = BoundPiPLayout(viewport: CGRect(x: 100, y: 0, width: 600, height: 400),
+            baseSize: CGSize(width: 216, height: 144), scale: 1,
+            occupied: [CGRect(x: 600, y: 240, width: 100, height: 150)])
+        let start = layout.center(.topRight)
+        for dy: CGFloat in [25, 50, 75, 100] {
+            let dragged = layout.dragCenter(from: .topRight, translation: CGSize(width: -30, height: dy))
+            XCTAssertEqual(dragged.x, start.x - 30, accuracy: 0.001)
+            XCTAssertEqual(dragged.y, start.y + dy, accuracy: 0.001)
+        }
+        // A short diagonal adjustment does not leap across both axes.
+        XCTAssertEqual(layout.destination(from: .topRight, translation: CGSize(width: -80, height: 60)), .topRight)
+    }
+
     func testPiPBoundsOversizedRequestAndReportsCompletelyCoveredViewport() {
         let viewport = CGRect(x: 0, y: 0, width: 100, height: 60)
         let layout = BoundPiPLayout(viewport: viewport, baseSize: CGSize(width: 216, height: 144), scale: 1.4)

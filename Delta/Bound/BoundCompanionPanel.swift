@@ -198,24 +198,8 @@ final class BoundCompanionCoordinator {
         }
         let horizontal = CGRect(x: safeArea.left, y: 0, width: max(1, bounds.width - safeArea.left - safeArea.right), height: bounds.height)
         if landscape {
-            let game = AVMakeRect(aspectRatio: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2), insideRect: horizontal)
-            let viewport = game
-            let base = companionBaseSize(width: game.width * 0.36)
-            let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
-            self.geometry = geometry
-            let center = geometry.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
-            var panel = CGRect(x: center.x - geometry.size.width / 2, y: center.y - geometry.size.height / 2, width: geometry.size.width, height: geometry.size.height)
-            if isEditingNotes {
-                let available = bounds.inset(by: safeArea)
-                panel = CGRect(x: available.midX - min(400, available.width) / 2, y: available.minY + 4, width: min(400, available.width), height: max(100, min(230, bounds.height - keyboardHeight - available.minY - 8)))
-            }
-            overlay?.frame = panel
-            overlay?.isHidden = state.hidden
-            overlay?.alpha = isEditingNotes ? 1 : liveOpacity ?? state.preferences.opacity(for: state.content)
+            // The native game and controls must finish layout before placing PiP.
             owner.gameScreenLayoutBounds = horizontal
-            host?.view.frame = overlay?.bounds ?? .zero
-            owner.view.bringSubviewToFront(overlay!)
-            layoutCycleButton(bounds: bounds, safeArea: safeArea)
             return bounds
         }
         let geometry = BoundPortraitScreenGeometry(bounds: bounds, safeTop: safeArea.top,
@@ -235,35 +219,17 @@ final class BoundCompanionCoordinator {
         owner.view.bringSubviewToFront(overlay!); layoutCycleButton(bounds: bounds, safeArea: safeArea)
         return nil // Native Delta's full-viewport controller layout remains untouched.
     }
-    /// Called after native Delta layout, so rotation and custom skins use the actual game frame.
-    func layoutNativeCompanion(in bounds: CGRect, safeArea: UIEdgeInsets) {
-        guard BoundAppearancePreferences().screenLayout == .delta, let owner, let overlay, let controls else { return }
-        let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
-        let viewport = state.landscape ? game : game.intersection(bounds.inset(by: safeArea))
-        guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
-        let base = companionBaseSize(width: viewport.width * 0.36)
-        let geometry = BoundPiPLayout(viewport: viewport, baseSize: base, scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale)
-        self.geometry = geometry
-        let center = geometry.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
-        var panel = CGRect(x: center.x - geometry.size.width / 2, y: center.y - geometry.size.height / 2, width: geometry.size.width, height: geometry.size.height)
-        if isEditingNotes {
-            let available = bounds.inset(by: safeArea)
-            let top = available.minY + 48
-            panel = CGRect(x: available.midX - min(400, available.width) / 2, y: top, width: min(400, available.width), height: max(100, min(230, bounds.height - keyboardHeight - top - 8)))
-        }
-        overlay.frame = panel; host?.view.frame = overlay.bounds
-        overlay.isHidden = state.hidden; overlay.alpha = isEditingNotes ? 1 : liveOpacity ?? state.preferences.opacity(for: state.content)
-        owner.view.bringSubviewToFront(overlay); layoutCycleButton(bounds: bounds, safeArea: safeArea)
-    }
     func bringControlsToFront() {
         guard let owner else { return }
         layoutCycleButton(bounds: owner.view.bounds, safeArea: owner.view.safeAreaInsets)
-        layoutPiPAroundControls()
+        if state.landscape || BoundAppearancePreferences().screenLayout == .delta {
+            layoutFloatingPanel()
+        }
+        if let controls { owner.view.bringSubviewToFront(controls) }
     }
-    /// Native control frames settle after Delta lays out; reserve their complete hit targets.
-    private func layoutPiPAroundControls() {
-        guard let owner, let overlay, let controls, !isEditingNotes,
-              state.landscape || BoundAppearancePreferences().screenLayout == .delta else { return }
+    /// One final placement, using the settled native viewport and actual hit regions.
+    private func layoutFloatingPanel() {
+        guard let owner, let overlay, let controls else { return }
         let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
         let viewport = game.intersection(owner.view.bounds.inset(by: owner.view.safeAreaInsets))
         guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
@@ -279,11 +245,24 @@ final class BoundCompanionCoordinator {
             baseSize: companionBaseSize(width: viewport.width * 0.36),
             scale: CGFloat(state.preferences.scale(for: state.content)) * pinchScale, occupied: occupied)
         geometry = layout
-        let center = layout.clampedCenter(from: state.preferences.corner(for: state.content), translation: translation)
-        overlay.frame = CGRect(x: center.x - layout.size.width / 2, y: center.y - layout.size.height / 2,
-                               width: layout.size.width, height: layout.size.height)
+        let corner = state.preferences.corner(for: state.content)
+        // Follow the finger continuously; collision-free corner placement happens
+        // on release. The overlay always yields touches to native controls.
+        let center = translation == .zero ? layout.center(corner) : layout.dragCenter(from: corner, translation: translation)
+        var panel = CGRect(x: center.x - layout.size.width / 2, y: center.y - layout.size.height / 2,
+                           width: layout.size.width, height: layout.size.height)
+        if isEditingNotes {
+            let available = owner.view.bounds.inset(by: owner.view.safeAreaInsets)
+            let top = available.minY + (state.landscape ? 4 : 48)
+            panel = CGRect(x: available.midX - min(400, available.width) / 2, y: top,
+                           width: min(400, available.width),
+                           height: max(100, min(230, owner.view.bounds.height - keyboardHeight - top - 8)))
+        }
+        overlay.frame = panel
         host?.view.frame = overlay.bounds
         overlay.isHidden = state.hidden || layout.size.width == 0 || layout.size.height == 0
+        overlay.alpha = isEditingNotes ? 1 : liveOpacity ?? state.preferences.opacity(for: state.content)
+        owner.view.bringSubviewToFront(overlay)
     }
     private func layoutCycleButton(bounds: CGRect, safeArea: UIEdgeInsets) {
         guard let owner, let controls, let skin = owner.controllerView.controllerSkin,
@@ -328,6 +307,7 @@ final class BoundCompanionCoordinator {
             canvas: bounds.inset(by: safeArea), occupied: occupied, rightShoulderFrame: rightFrame, menuHitSize: menuHitSize, boundPortrait: boundPortrait, selectArtwork: selectArtwork,
             rightControlGutter: owner.boundLandscapeControlGutter(),
             menuHitFrame: owner.controllerView.convert(menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view))
+        controls.accessibilityHint = state.hidden ? "Restores the hidden panel" : "Cycles Friend, Notes, and Types"
         owner.view.bringSubviewToFront(controls)
     }
     func presentFriends(from presenter: UIViewController) {
@@ -360,7 +340,7 @@ final class BoundCompanionCoordinator {
     func cyclePanels() {
         owner?.view.endEditing(true)
         cancelInteractions()
-        state.selected = (state.selected + 1) % 3
+        if !state.hidden { state.selected = (state.selected + 1) % 3 }
         state.hidden = false; state.refresh()
     }
     var allowsOpacityGesture: Bool { state.landscape && state.content != .types && !isEditingNotes }
@@ -392,7 +372,7 @@ final class BoundCompanionCoordinator {
     }
     private func move(_ phase: UIGestureRecognizer.State, offset: CGSize, endX: CGFloat) {
         guard let geometry else { return }
-        if phase == .changed { translation = offset }
+        if phase == .began || phase == .changed { translation = offset }
         if phase == .ended {
             let corner = state.preferences.corner(for: state.content)
             state.hidden = geometry.hiddenSide(from: corner, translation: offset, endX: endX) != nil
@@ -404,7 +384,11 @@ final class BoundCompanionCoordinator {
     func resize(_ phase: UIGestureRecognizer.State, scale: CGFloat) {
         if phase == .began { resizingContent = state.content; initialScale = state.preferences.scale(for: state.content); pinchScale = 1 }
         guard let content = resizingContent, content == state.content else { pinchScale = 1; resizingContent = nil; return }
-        if phase == .changed, scale.isFinite { pinchScale = min(1.4 / initialScale, max(0.65 / initialScale, Double(scale))) }
+        // UIKit may recognize a short gesture immediately before its release.
+        // Consume the valid begin/end sample too, even with no changed callback.
+        if [.began, .changed, .ended].contains(phase), scale.isFinite {
+            pinchScale = min(1.4 / initialScale, max(0.65 / initialScale, Double(scale)))
+        }
         if phase == .ended { state.preferences.setScale(initialScale * Double(pinchScale), for: content); pinchScale = 1; resizingContent = nil }
         if phase == .cancelled || phase == .failed { pinchScale = 1; resizingContent = nil }
         state.refresh()
@@ -413,7 +397,7 @@ final class BoundCompanionCoordinator {
         guard allowsOpacityGesture else { liveOpacity = nil; fadingContent = nil; return }
         if phase == .began { fadingContent = state.content; initialOpacity = state.preferences.opacity(for: state.content); liveOpacity = initialOpacity }
         guard let content = fadingContent, content == state.content else { liveOpacity = nil; fadingContent = nil; return }
-        if phase == .changed {
+        if [.began, .changed, .ended].contains(phase) {
             let height = (geometry?.size.height ?? 160) / CGFloat(state.preferences.scale(for: state.content))
             liveOpacity = BoundPiPPreferences.opacity(start: initialOpacity, verticalTranslation: dy, panelHeight: height)
         }
@@ -468,7 +452,7 @@ struct BoundCompanionPanel: View {
                     if !sharing.remoteVisible && !state.displaysFixtureVideo { Text(sharing.active ? "Waiting for friend" : "Connect a friend").foregroundStyle(.white).font(.callout) }
                 }.accessibilityIdentifier("bound.friend-screen")
             } else if state.selected == 1 {
-                BoundNotesEditor(gameID: gameID, editingChanged: editingChanged).id(gameID)
+                BoundNotesEditor(gameID: gameID, floating: state.landscape, editingChanged: editingChanged).id(gameID)
             } else {
                 if state.landscape {
                     Image("PokemonTypeChart").resizable().scaledToFit()
@@ -516,7 +500,7 @@ private struct BoundPiPSettings: View {
                     } else { Text("No emulation package is active.") }
                 }
                 Section("Picture in picture") {
-                    Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to show the next panel. Portrait Types zooms and pans its chart content.")
+                    Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to restore it. Portrait Types zooms and pans its chart content.")
                     ForEach([BoundPiPContent.friend, .notes], id: \.rawValue) { content in
                         VStack(alignment: .leading) {
                             Text("\(content.rawValue.capitalized) transparency: \(Int(state.preferences.transparency(for: content) * 100))%")
@@ -544,6 +528,7 @@ private struct BoundRemoteCanvas: UIViewRepresentable {
 
 private struct BoundNotesEditor: View {
     let gameID: String
+    let floating: Bool
     let editingChanged: (Bool) -> Void
     @State private var text = ""
     @State private var status = ""
@@ -559,6 +544,7 @@ private struct BoundNotesEditor: View {
                 ZStack(alignment: .topLeading) {
                     BoundNotesTextView(text: $text, editing: Binding(get: { editing }, set: { editing = $0 }))
                         .disabled(!readable)
+                        .allowsHitTesting(!floating || editing)
                     if readable && text.isEmpty && !editing {
                         Text("Tap to add notes")
                             .font(BoundNotesFont.swiftUIFont()).foregroundStyle(.secondary)
@@ -570,6 +556,7 @@ private struct BoundNotesEditor: View {
             } else {
                 TextEditor(text: $text).focused($classicEditing).disabled(!readable)
                     .accessibilityIdentifier("bound.notes-editor")
+                    .allowsHitTesting(!floating || editing)
             }
             if !status.isEmpty || editing {
                 HStack {
@@ -582,6 +569,14 @@ private struct BoundNotesEditor: View {
                 .padding(usesBoundArrangement ? 8 : 0)
                 .background(usesBoundArrangement ? Color.black : Color.clear)
                 .foregroundStyle(usesBoundArrangement ? Color.white : Color.primary)
+            }
+        }
+        .overlay {
+            if floating && !editing && readable {
+                Color.clear.contentShape(Rectangle())
+                    .onTapGesture { editing = true; classicEditing = !usesBoundArrangement }
+                    .accessibilityLabel("Edit notes")
+                    .accessibilityIdentifier("bound.notes-preview")
             }
         }
         .onAppear {
@@ -627,7 +622,9 @@ struct BoundNotesTextView: UIViewRepresentable {
         view.isUserInteractionEnabled = context.environment.isEnabled
         // Avoid disturbing the selection or marked text during ordinary typing.
         if view.text != text { view.text = text }
-        if !editing && view.isFirstResponder { view.resignFirstResponder() }
+        if editing && !view.isFirstResponder {
+            DispatchQueue.main.async { if self.editing { view.becomeFirstResponder() } }
+        } else if !editing && view.isFirstResponder { view.resignFirstResponder() }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }

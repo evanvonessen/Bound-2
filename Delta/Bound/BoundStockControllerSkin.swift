@@ -29,24 +29,18 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
             if let gutter = boundLandscapeGutter,
                let right = original.first(where: { Self.hasInput("r", $0) }) {
                 let toPixels = CGAffineTransform(scaleX: canvasSize.width, y: canvasSize.height)
-                let nativeVisual = item.frame.applying(toPixels)
-                let nativeHit = item.extendedFrame.applying(toPixels)
+                // Reserve Menu and the companion button together. Both remain
+                // 44pt targets in the same slots when Controller Mode hides inputs.
                 let slot = gutter.width >= 48 ? gutter.insetBy(dx: 2, dy: 0) : gutter
-                let visualScale = min(1, slot.width/nativeVisual.width)
-                let visualSize = CGSize(width: nativeVisual.width*visualScale, height: nativeVisual.height*visualScale)
-                let hitSize = CGSize(width: min(max(44, nativeHit.width), slot.width), height: max(44, nativeHit.height))
-                // Preserve stock art where it fits. On shorter phones, cap just
-                // this Menu art to the gutter without changing video or game inputs.
-                if hitSize.width >= max(44, visualSize.width), slot.height >= hitSize.height {
-                    let obstacles = original.filter { !Self.hasInput("menu", $0) }.map { $0.extendedFrame.applying(toPixels) }
-                    let belowShoulder = right.extendedFrame.applying(toPixels).maxY + 10 + hitSize.height/2
-                    if let hit = Self.gutterFrame(preferredY: belowShoulder, size: hitSize, gutter: slot, occupied: obstacles) {
-                        let frame = CGRect(x: hit.midX-visualSize.width/2, y: hit.midY-visualSize.height/2, width: visualSize.width, height: visualSize.height)
-                        let normalized = CGAffineTransform(scaleX: 1/canvasSize.width, y: 1/canvasSize.height)
-                        result.frame = frame.applying(normalized)
-                        result.extendedFrame = hit.applying(normalized)
-                        return result
-                    }
+                let pairSize = CGSize(width: 44, height: 96)
+                let obstacles = original.filter { !Self.hasInput("menu", $0) }.map { $0.extendedFrame.applying(toPixels) }
+                let belowShoulder = right.extendedFrame.applying(toPixels).maxY + 10 + pairSize.height/2
+                if let pair = Self.gutterFrame(preferredY: belowShoulder, size: pairSize, gutter: slot, occupied: obstacles) {
+                    let frame = CGRect(x: pair.minX, y: pair.minY, width: 44, height: 44)
+                    let normalized = CGAffineTransform(scaleX: 1/canvasSize.width, y: 1/canvasSize.height)
+                    result.frame = frame.applying(normalized)
+                    result.extendedFrame = result.frame
+                    return result
                 }
                 // Unsupported/no-space layouts retain the usable native Menu.
             }
@@ -101,11 +95,16 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
                 let old = scaled(menu.frame), destination = scaled(moved.frame)
                 context.cgContext.saveGState(); context.cgContext.setBlendMode(.clear)
                 context.cgContext.fill(old.insetBy(dx: -2, dy: -2)); context.cgContext.restoreGState()
-                context.cgContext.saveGState(); context.cgContext.clip(to: destination)
-                let sx = destination.width/old.width, sy = destination.height/old.height
-                image.draw(in: CGRect(x: destination.minX-old.minX*sx, y: destination.minY-old.minY*sy,
-                    width: size.width*sx, height: size.height*sy))
-                context.cgContext.restoreGState()
+                if boundLandscapeGutter != nil, abs(moved.frame.width*canvasSize.width - 44) < 0.1,
+                   abs(moved.frame.height*canvasSize.height - 44) < 0.1 {
+                    drawMenu(in: destination)
+                } else {
+                    context.cgContext.saveGState(); context.cgContext.clip(to: destination)
+                    let sx = destination.width/old.width, sy = destination.height/old.height
+                    image.draw(in: CGRect(x: destination.minX-old.minX*sx, y: destination.minY-old.minY*sy,
+                        width: size.width*sx, height: size.height*sy))
+                    context.cgContext.restoreGState()
+                }
             }
             if traits.orientation == .portrait && traits.device == .iphone {
                 let core = base.identifier.replacingOccurrences(of: "com.delta.", with: "").replacingOccurrences(of: ".standard", with: "")
@@ -149,6 +148,16 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
                 }
             }
         }
+    }
+    private func drawMenu(in frame: CGRect) {
+        let box = frame.insetBy(dx: 1, dy: 1)
+        let path = UIBezierPath(roundedRect: box, cornerRadius: box.height/2)
+        UIColor.deltaPurple.setFill(); path.fill()
+        UIColor.white.withAlphaComponent(0.85).setStroke(); path.lineWidth = 1.5; path.stroke()
+        let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: box.height * 0.25, weight: .semibold), .foregroundColor: UIColor.white]
+        let label = "MENU" as NSString
+        let size = label.size(withAttributes: attributes)
+        label.draw(at: CGPoint(x: box.midX-size.width/2, y: box.midY-size.height/2), withAttributes: attributes)
     }
     func image(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.image(for: traits, preferredSize: preferredSize), traits: traits) }
     func pressedImage(for traits: DeltaCore.ControllerSkin.Traits, preferredSize: DeltaCore.ControllerSkin.Size) -> UIImage? { artwork(base.pressedImage(for: traits, preferredSize: preferredSize), traits: traits) }

@@ -62,15 +62,21 @@ final class BoundCompanionCycleButton: UIButton {
                    content: BoundPiPContent, canvas: CGRect, occupied: [CGRect], rightShoulderFrame: CGRect? = nil, menuHitSize: CGSize? = nil, boundPortrait: Bool = false, selectArtwork: UIImage? = nil, rightControlGutter: CGRect? = nil, menuHitFrame: CGRect? = nil) {
         self.boundPortrait = boundPortrait; self.selectArtwork = selectArtwork
         self.landscape = landscape; self.minimal = minimal; self.content = content
-        visualSize = minimal ? CGSize(width: max(48, menuFrame.width), height: max(44, menuFrame.height)) : menuFrame.size
+        let fixedPair = landscape && rightControlGutter != nil && abs(menuFrame.width-44) < 0.5 && abs(menuFrame.height-44) < 0.5
+        visualSize = fixedPair ? CGSize(width: 44, height: 44)
+            : minimal ? CGSize(width: max(48, menuFrame.width), height: max(44, menuFrame.height)) : menuFrame.size
         if landscape, let gutter = rightControlGutter {
             visualSize.width = min(visualSize.width, gutter.width)
             visualSize.height = min(visualSize.height, gutter.height)
         }
         let requestedWidth = max(44, max(visualSize.width, menuHitSize?.width ?? 0))
-        let hitSize = CGSize(width: rightControlGutter.map { min(requestedWidth, $0.width) } ?? requestedWidth, height: max(44, max(visualSize.height, menuHitSize?.height ?? 0)))
+        let hitSize = fixedPair ? CGSize(width: 44, height: 44)
+            : CGSize(width: rightControlGutter.map { min(requestedWidth, $0.width) } ?? requestedWidth,
+                     height: max(44, max(visualSize.height, menuHitSize?.height ?? 0)))
         let preferred: CGPoint
-        if let gutter = rightControlGutter, landscape {
+        if fixedPair {
+            preferred = CGPoint(x: menuFrame.midX, y: menuFrame.maxY + 8 + hitSize.height/2)
+        } else if let gutter = rightControlGutter, landscape {
             preferred = CGPoint(x: gutter.maxX - hitSize.width/2,
                                 y: (menuHitFrame?.maxY ?? menuFrame.maxY) + 8 + hitSize.height/2)
         } else if !landscape {

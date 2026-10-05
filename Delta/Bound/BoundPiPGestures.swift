@@ -42,7 +42,7 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
         centerFade = center
         recognizers = [pan, pinch, center]
         for recognizer in recognizers {
-            recognizer.cancelsTouchesInView = false
+            recognizer.cancelsTouchesInView = true
             recognizer.delegate = self
             view.addGestureRecognizer(recognizer)
         }
@@ -111,7 +111,7 @@ final class BoundPiPGestures: NSObject, UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer === centerFade || otherGestureRecognizer === centerFade { return false }
-        return true
+        return recognizers.contains(gestureRecognizer) && recognizers.contains(otherGestureRecognizer)
     }
 }
 

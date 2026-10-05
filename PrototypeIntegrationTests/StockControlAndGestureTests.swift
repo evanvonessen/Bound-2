@@ -116,7 +116,6 @@ final class StockControlAndGestureTests: XCTestCase {
                 let skin = BoundStockControllerSkin(base: base, canvasSize: source.size, contentInsets: insets, boundLandscapeGutter: localGutter)
                 let items = try XCTUnwrap(skin.items(for: traits))
                 let menu = try XCTUnwrap(items.first { $0.inputs.allInputs.contains { $0.stringValue == "menu" } })
-                let native = try XCTUnwrap(original.first { $0.id == menu.id })
                 let transform = CGAffineTransform(scaleX: source.width, y: source.height)
                 let art = menu.frame.applying(transform).offsetBy(dx: source.minX, dy: source.minY)
                 let hit = menu.extendedFrame.applying(transform).offsetBy(dx: source.minX, dy: source.minY)
@@ -126,9 +125,9 @@ final class StockControlAndGestureTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(hit.height, 44-0.001)
                 XCTAssertGreaterThanOrEqual(hit.minX, gutter.minX-0.001)
                 XCTAssertLessThanOrEqual(hit.maxX, gutter.maxX+0.001)
-                let expectedWidth = min(native.frame.width*source.width, gutter.width >= 48 ? gutter.width-4 : gutter.width)
-                XCTAssertEqual(art.width, expectedWidth, accuracy: 0.001)
-                XCTAssertEqual(art.width/art.height, native.frame.width*source.width/(native.frame.height*source.height), accuracy: 0.001)
+                XCTAssertEqual(art.width, 44, accuracy: 0.001)
+                XCTAssertEqual(art.height, 44, accuracy: 0.001)
+                XCTAssertEqual(hit.size, art.size)
                 for item in items where item.id != menu.id {
                     XCTAssertEqual(item.frame, original.first { $0.id == item.id }?.frame)
                     XCTAssertEqual(item.extendedFrame, original.first { $0.id == item.id }?.extendedFrame)
@@ -264,6 +263,30 @@ final class StockControlAndGestureTests: XCTestCase {
             XCTAssertEqual(ContainerRelativeGrid.incompleteRowOffset(columns: 4, count: 3, itemWidth: 145, spacing: 15), 80)
             XCTAssertEqual(ContainerRelativeGrid.incompleteRowOffset(columns: 3, count: 3, itemWidth: 145, spacing: 15), 0)
         }
+    }
+
+    func testShortRecognizedGesturesCommitTheirFinalValidSample() throws {
+        let suite = "BoundShortGestures." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = BoundPiPPreferences(defaults: defaults)
+        let state = BoundCompanionState(preferences: preferences)
+        state.landscape = true
+        let coordinator = BoundCompanionCoordinator(state: state)
+        coordinator.resize(.began, scale: 1.08)
+        coordinator.resize(.ended, scale: 1.08)
+        XCTAssertEqual(preferences.scale(for: .friend), 1.08, accuracy: 0.001)
+        coordinator.fade(.began, dy: 20)
+        coordinator.fade(.ended, dy: 20)
+        XCTAssertLessThan(preferences.opacity(for: .friend), 1)
+        let saved = preferences.opacity(for: .friend)
+        coordinator.fade(.began, dy: 40)
+        coordinator.fade(.cancelled, dy: 40)
+        XCTAssertEqual(preferences.opacity(for: .friend), saved)
+        state.selected = 2
+        coordinator.fade(.began, dy: 60)
+        coordinator.fade(.ended, dy: 60)
+        XCTAssertEqual(preferences.opacity(for: .types), 1)
     }
 
     func testFingerCountChangesCannotCommitUnwantedMovementResizeOrOpacity() {

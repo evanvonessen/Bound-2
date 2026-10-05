@@ -139,19 +139,23 @@ struct BoundPiPLayout {
         } }
         return closest
     }
+    /// During a drag, preserve direct finger-to-panel movement instead of jumping
+    /// between collision-free regions as the pointer crosses a native control.
+    func dragCenter(from corner: BoundPiPCorner, translation: CGSize) -> CGPoint {
+        let origin = center(corner)
+        return CGPoint(x: min(max(origin.x + translation.width, viewport.minX + padding + size.width/2), viewport.maxX - padding - size.width/2),
+                       y: min(max(origin.y + translation.height, viewport.minY + padding + size.height/2), viewport.maxY - padding - size.height/2))
+    }
     func destination(from corner: BoundPiPCorner, translation: CGSize) -> BoundPiPCorner {
-        let thresholdX = min(70, viewport.width * 0.16)
-        let thresholdY = min(55, viewport.height * 0.16)
-        let left = translation.width < -thresholdX ? true : translation.width > thresholdX ? false
-            : corner == .topLeft || corner == .bottomLeft
-        let top = translation.height < -thresholdY ? true : translation.height > thresholdY ? false
-            : corner == .topLeft || corner == .topRight
-        switch (top, left) {
-        case (true, true): return .topLeft
-        case (true, false): return .topRight
-        case (false, true): return .bottomLeft
-        case (false, false): return .bottomRight
+        let origin = center(corner)
+        let end = CGPoint(x: origin.x + translation.width, y: origin.y + translation.height)
+        func distance(_ candidate: BoundPiPCorner) -> CGFloat {
+            let target = center(candidate)
+            return pow(target.x-end.x, 2) + pow(target.y-end.y, 2)
         }
+        // Small drags stay put; a cross-screen drag selects the nearest actual
+        // destination, including its native-control clearance.
+        return BoundPiPCorner.allCases.reduce(corner) { distance($1) < distance($0) ? $1 : $0 }
     }
     func hiddenSide(from corner: BoundPiPCorner, translation: CGSize, endX: CGFloat? = nil) -> BoundPiPHiddenSide? {
         guard abs(translation.width) > 50 else { return nil }
