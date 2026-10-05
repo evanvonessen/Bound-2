@@ -1,0 +1,80 @@
+import XCTest
+import UIKit
+import Security
+@testable import Delta
+
+/// Synthetic credentials exercise the native Keychain and account lifecycle; no backend is contacted.
+@MainActor
+final class AccountPersistenceIntegrationTests: XCTestCase {
+    private func token(owner: UUID, expires: TimeInterval = 3600) throws -> String {
+        let bytes = try JSONSerialization.data(withJSONObject: ["sub": owner.uuidString.lowercased(), "exp": Date().timeIntervalSince1970 + expires])
+        let payload = bytes.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        return "fixture." + payload + ".signature"
+    }
+    func testNativeKeychainRestoresSignedInFixtureAndLogoutRemovesIt() async throws {
+        let namespace = "Bound.AuthPersistenceTest." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: namespace))
+        let storage = BoundKeychainSessionStorage(defaults: defaults, service: namespace)
+        defer { try? storage.remove(); defaults.removePersistentDomain(forName: namespace) }
+        let owner = UUID(); let access = try token(owner: owner)
+        let fixture = BoundAuthTransport.Response(data: try JSONSerialization.data(withJSONObject: [
+            "access_token": access, "refresh_token": "synthetic-native-refresh", "user": ["id": owner.uuidString]
+        ]), status: 200)
+        var first: BoundFriendAccount? = BoundFriendAccount(storage: storage, automaticRefresh: false,
+            configuration: { "fixture-key" }, transport: { _ in fixture })
+        await first?.signIn(email: "fixture@example.invalid", password: "synthetic-password")
+        XCTAssertEqual(first?.session?.owner, owner)
+        let saved = try XCTUnwrap(storage.read())
+        XCTAssertFalse(String(decoding: saved, as: UTF8.self).contains("synthetic-password"))
+        XCTAssertFalse(String(decoding: saved, as: UTF8.self).contains("fixture@example.invalid"))
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: namespace, kSecAttrAccount as String: BoundFriendAccount.origin,
+            kSecReturnAttributes as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        var result: CFTypeRef?
+        XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, &result), errSecSuccess)
+        let attributes = try XCTUnwrap(result as? [String: Any])
+        XCTAssertEqual(attributes[kSecAttrAccessible as String] as? String, kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        first = nil
+        let restored = BoundFriendAccount(storage: storage, automaticRefresh: false, configuration: { "fixture-key" }, transport: { _ in
+            XCTFail("A valid restored session must not need a network call")
+            throw BoundFriendError.unavailable
+        })
+        XCTAssertEqual(restored.session?.owner, owner)
+        let retainedSession = try XCTUnwrap(restored.session)
+        XCTAssertNoThrow(try retainedSession.credentials())
+        await restored.refreshIfNeeded()
+        restored.signOut()
+        XCTAssertNil(try storage.read()); XCTAssertNil(restored.session)
+        XCTAssertThrowsError(try retainedSession.credentials())
+        XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, nil), errSecItemNotFound)
+        let signedOut = BoundFriendAccount(storage: storage, automaticRefresh: false, configuration: { "fixture-key" })
+        XCTAssertNil(signedOut.session)
+    }
+    func testForegroundRefreshRenewsExpiredNativeFixtureWithoutLogin() async throws {
+        let namespace = "Bound.AuthForegroundTest." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: namespace))
+        let storage = BoundKeychainSessionStorage(defaults: defaults, service: namespace)
+        defer { try? storage.remove(); defaults.removePersistentDomain(forName: namespace) }
+        let owner = UUID()
+        try storage.write(JSONEncoder().encode(BoundSavedSession(origin: BoundFriendAccount.origin,
+            owner: owner, accessToken: try token(owner: owner, expires: -30), refreshToken: "synthetic-expired-refresh")))
+        let completed = expectation(description: "Foreground refresh")
+        let replacement = try token(owner: owner)
+        let fixture = BoundAuthTransport.Response(data: try JSONSerialization.data(withJSONObject: [
+            "access_token": replacement, "refresh_token": "synthetic-rotated-refresh", "user": ["id": owner.uuidString]
+        ]), status: 200)
+        let restored = BoundFriendAccount(storage: storage, automaticRefresh: false, configuration: { "fixture-key" }, transport: { request in
+            XCTAssertEqual(request.url?.query, "grant_type=refresh_token")
+            completed.fulfill()
+            return fixture
+        })
+        XCTAssertEqual(restored.session?.owner, owner)
+        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        await fulfillment(of: [completed], timeout: 2)
+        await restored.refreshIfNeeded()
+        XCTAssertNoThrow(try XCTUnwrap(restored.session).credentials())
+        let persisted = try JSONDecoder().decode(BoundSavedSession.self, from: XCTUnwrap(storage.read()))
+        XCTAssertEqual(persisted.refreshToken, "synthetic-rotated-refresh")
+        restored.signOut()
+    }
+}

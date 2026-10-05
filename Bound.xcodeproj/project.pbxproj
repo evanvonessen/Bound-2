@@ -32,6 +32,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		47AF26DA565A4105BA138CAF /* AccountPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */; };
 		E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */ = {isa = PBXBuildFile; fileRef = 0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */; };
 		4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */ = {isa = PBXBuildFile; fileRef = 9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */; };
 		29764E0164684F3CAA391DBD /* COPYING in Resources */ = {isa = PBXBuildFile; fileRef = 084DC89EF78044B6A582A1A2 /* COPYING */; };
@@ -789,6 +790,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "DEPENDENCY-INVENTORY.md"; path = "LICENSES/DEPENDENCY-INVENTORY.md"; sourceTree = SOURCE_ROOT; };
 		9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "BOUND2-MODIFICATIONS.md"; path = "LICENSES/BOUND2-MODIFICATIONS.md"; sourceTree = SOURCE_ROOT; };
 		084DC89EF78044B6A582A1A2 /* COPYING */ = {isa = PBXFileReference; lastKnownFileType = text; name = "COPYING"; path = "COPYING"; sourceTree = SOURCE_ROOT; };
@@ -1281,6 +1283,7 @@
 				1EAF49DF04CC61B325DAF2E0 /* TypeChartViewTests.swift */,
 				B8A586A10E1DB92A87DB45B1 /* CompanionCycleButtonTests.swift */,
 				104D04088215A199CB56949A /* StockControlAndGestureTests.swift */,
+				B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */,
 			);
 			name = PrototypeIntegrationTests;
 			path = PrototypeIntegrationTests;
@@ -3032,6 +3035,7 @@
 				3EC156C10490F4D05AACF9C7 /* TypeChartViewTests.swift in Sources */,
 				531059D8A4211817FB949969 /* CompanionCycleButtonTests.swift in Sources */,
 				D1CCDE2C67C0DCD2A3EF9645 /* StockControlAndGestureTests.swift in Sources */,
+				47AF26DA565A4105BA138CAF /* AccountPersistenceIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

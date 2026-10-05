@@ -51,7 +51,7 @@ final class BoundCompanionCoordinator {
     private let usesLocalPairedFixture: Bool
     #endif
     let onboarding = FriendOnboarding()
-    let account = BoundFriendAccount()
+    let account = BoundFriendAccount.shared
     let state: BoundCompanionState
     init(state: BoundCompanionState? = nil) {
         self.state = state ?? BoundCompanionState()
