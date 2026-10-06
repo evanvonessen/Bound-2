@@ -114,6 +114,68 @@ final class CompanionUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 8), .completed)
     }
 
+    func testPortraitStockStripAndWordmarkAcrossLayoutsAndThemes() throws {
+        let app = openGame(arguments: ["--bound-ui-native-layout", "--bound-ui-reset-layout", "--bound-ui-friend-fixture"])
+        let game = element("bound.game-screen", in: app)
+        let left = element("bound.native-l", in: app), right = element("bound.native-r", in: app)
+        let cycle = app.buttons["bound.panel-cycle"]
+        var measurements: [[String: Any]] = []
+        for layout in ["Classic", "Bound"] {
+            for theme in ["Classic", "Minimal"] {
+                XCUIDevice.shared.orientation = .portrait
+                openBoundSettings(in: app)
+                let arrangement = element("bound.screen-layout", in: app)
+                XCTAssertTrue(arrangement.waitForExistence(timeout: 5)); arrangement.tap()
+                app.buttons[layout].firstMatch.tap()
+                let appearance = element("bound.theme", in: app)
+                scrollToSetting(appearance, in: app); appearance.tap()
+                app.buttons[theme].firstMatch.tap()
+                closeBoundSheet(in: app)
+                selectCompanion("Friend", in: app)
+                waitForFrame(game) { app.frame.height > app.frame.width && $0.width > $0.height }
+                XCTAssertTrue(left.waitForExistence(timeout: 5)); XCTAssertTrue(right.waitForExistence(timeout: 5))
+                let scale = app.frame.width / 320
+                let mappingHeight: CGFloat = app.frame.height <= 667 ? 240 : 274
+                let controllerTop = app.frame.maxY - mappingHeight * scale
+                for (control, x) in [(left, CGFloat(0)), (right, CGFloat(212))] {
+                    XCTAssertEqual(control.frame.minX, app.frame.minX + x * scale, accuracy: 1)
+                    XCTAssertEqual(control.frame.minY, controllerTop + 2 * scale, accuracy: 1)
+                    XCTAssertEqual(control.frame.width, 108 * scale, accuracy: 1)
+                    XCTAssertEqual(control.frame.height, 30 * scale, accuracy: 1)
+                    XCTAssertFalse(control.frame.intersects(game.frame), "Gameplay cannot cover the original shoulder strip")
+                }
+                if layout == "Bound" {
+                    XCTAssertEqual(game.frame.width, app.frame.width, accuracy: 1)
+                    XCTAssertEqual(game.frame.maxY, controllerTop, accuracy: 1)
+                    XCTAssertEqual(game.frame.width / game.frame.height, 1.5, accuracy: 0.01)
+                    let friend = element("bound.friend-screen", in: app)
+                    XCTAssertLessThanOrEqual(friend.frame.maxY + 7, game.frame.minY)
+                }
+                func values(_ frame: CGRect) -> [Double] { [frame.minX, frame.minY, frame.width, frame.height].map(Double.init) }
+                measurements.append(["layout": layout, "theme": theme, "screen": values(app.frame),
+                    "game": values(game.frame), "left": values(left.frame), "right": values(right.frame),
+                    "controllerTop": controllerTop, "cycle": values(cycle.frame)])
+                screenshot("Portrait-strip-\(layout)-\(theme)")
+                let leftBefore = left.frame, rightBefore = right.frame, cycleBefore = cycle.frame
+                selectCompanion("Notes", in: app)
+                selectCompanion("Friend", in: app)
+                XCTAssertEqual(left.frame, leftBefore); XCTAssertEqual(right.frame, rightBefore)
+                XCTAssertEqual(cycle.frame, cycleBefore)
+                XCUIDevice.shared.orientation = .landscapeLeft
+                waitForFrame(game) { app.frame.width > app.frame.height && $0.width > $0.height }
+                if layout == "Bound" { XCTAssertEqual(game.frame.height, app.frame.height, accuracy: 1) }
+                screenshot("Portrait-check-landscape-\(layout)-\(theme)")
+                XCUIDevice.shared.orientation = .portrait
+                waitForFrame(left) { abs($0.minY-leftBefore.minY) < 1 && abs($0.height-leftBefore.height) < 1 }
+                XCTAssertEqual(right.frame.minY, rightBefore.minY, accuracy: 1)
+                XCTAssertEqual(cycle.frame.minY, cycleBefore.minY, accuracy: 1)
+            }
+        }
+        let data = try JSONSerialization.data(withJSONObject: measurements, options: [.prettyPrinted, .sortedKeys])
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "portrait-stock-geometry"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
     func testAllLandscapePanelsMoveResizeRestoreAndKeepChromeStable() throws {
         let app = openGame(arguments: ["--bound-ui-reset-layout", "--bound-ui-friend-fixture"])
         XCUIDevice.shared.orientation = .landscapeLeft

@@ -1,4 +1,5 @@
 import UIKit
+import CoreText
 import DeltaCore
 
 /// App-owned artwork/stock placement policy. Upstream skin files and native inputs stay intact.
@@ -14,7 +15,7 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
     }
     private var stock: Bool { ["gba", "gbc", "nes", "snes", "n64", "genesis", "ds"].contains { base.identifier == "com.delta." + $0 + ".standard" } }
     var name: String { base.name }
-    var identifier: String { base.identifier + ".bound-stock.v2." + String(describing: canvasSize) + String(describing: contentInsets) + String(describing: boundLandscapeGutter) }
+    var identifier: String { base.identifier + ".bound-stock.v3." + String(describing: canvasSize) + String(describing: contentInsets) + String(describing: boundLandscapeGutter) }
     var gameType: GameType { base.gameType }
     var isDebugModeEnabled: Bool { base.isDebugModeEnabled }
     func supports(_ traits: DeltaCore.ControllerSkin.Traits) -> Bool { base.supports(traits) }
@@ -109,21 +110,21 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
             if traits.orientation == .portrait && traits.device == .iphone {
                 let core = base.identifier.replacingOccurrences(of: "com.delta.", with: "").replacingOccurrences(of: ".standard", with: "")
                 let edge = traits.displayType == .edgeToEdge
-                // Measured official PDF motif regions. Sample neighboring plain casing
-                // pixels to preserve each skin's actual color/gradient, not a guessed fill.
-                let top: CGRect?
-                switch core {
-                case "gba", "snes": top = CGRect(x: 0.40, y: 0, width: 0.20, height: edge ? 0.055 : 0.065)
-                case "gbc": top = CGRect(x: 0.40, y: 0.025, width: 0.20, height: edge ? 0.055 : 0.065)
-                case "n64": top = CGRect(x: 0.40, y: 0, width: 0.20, height: 0.045)
-                case "nes": top = CGRect(x: 0.04, y: edge ? 0.045 : 0.03, width: 0.19, height: 0.065)
-                default: top = nil
-                }
-                if let top {
-                    let rect = scaled(top)
-                    context.cgContext.saveGState(); context.cgContext.clip(to: rect)
-                    image.draw(at: CGPoint(x: 0, y: -rect.height - 5))
+                // The centered stock wordmarks sit on transparent pixels above the
+                // casing edge. Clear only their ink region; sampling lower casing
+                // pixels here used to paint a raised purple block between L/R.
+                if let rect = portraitWordmarkFrame(size: size, traits: traits) {
+                    context.cgContext.saveGState()
+                    context.cgContext.clip(to: rect)
+                    if core == "nes" {
+                        // NES prints on the casing: sample the same horizontal band.
+                        image.draw(at: CGPoint(x: -70 * size.width / 320, y: 0))
+                    } else {
+                        context.cgContext.setBlendMode(.clear)
+                        context.cgContext.fill(rect)
+                    }
                     context.cgContext.restoreGState()
+                    drawPortraitWordmark(in: context.cgContext, size: size, traits: traits)
                 }
                 let bottom: CGRect?
                 switch core {
@@ -148,6 +149,57 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
                 }
             }
         }
+    }
+    /// Measured in the official 320-point-wide portrait PDFs, not gameplay space.
+    /// Keep the original top strip and all native item/hit rectangles unchanged.
+    func portraitWordmarkFrame(size: CGSize, traits: DeltaCore.ControllerSkin.Traits) -> CGRect? {
+        guard stock, traits.device == .iphone, traits.orientation == .portrait else { return nil }
+        let rect: CGRect
+        switch base.identifier {
+        case "com.delta.gba.standard", "com.delta.snes.standard", "com.delta.n64.standard":
+            rect = CGRect(x: 130, y: 0, width: 60, height: 12)
+        case "com.delta.gbc.standard":
+            rect = CGRect(x: 130, y: 10, width: 60, height: 12)
+        case "com.delta.nes.standard":
+            rect = CGRect(x: 14, y: traits.displayType == .edgeToEdge ? 13 : 8, width: 60, height: 12)
+        default: return nil
+        }
+        let scale = size.width / 320
+        return rect.applying(.init(scaleX: scale, y: scale))
+    }
+    // Cache the native font outlines. Both normal and pressed composites use
+    // the same crisp uppercase wordmark without adding an interactive view.
+    private static let portraitWordmark: CGPath = {
+        let font = CTFontCreateWithName("HelveticaNeue-Medium" as CFString, 14, nil)
+        let characters = Array("BOUND".utf16)
+        var glyphs = [CGGlyph](repeating: 0, count: characters.count)
+        CTFontGetGlyphsForCharacters(font, characters, &glyphs, characters.count)
+        var advances = [CGSize](repeating: .zero, count: glyphs.count)
+        CTFontGetAdvancesForGlyphs(font, .horizontal, glyphs, &advances, glyphs.count)
+        let path = CGMutablePath()
+        var x: CGFloat = 0
+        for (index, glyph) in glyphs.enumerated() {
+            if let outline = CTFontCreatePathForGlyph(font, glyph, nil) {
+                path.addPath(outline, transform: .init(translationX: x, y: 0))
+            }
+            x += advances[index].width + 0.8
+        }
+        return path
+    }()
+    func drawPortraitWordmark(in context: CGContext, size: CGSize,
+                              traits: DeltaCore.ControllerSkin.Traits, color: UIColor? = nil) {
+        guard let frame = portraitWordmarkFrame(size: size, traits: traits) else { return }
+        let path = Self.portraitWordmark
+        let ink = path.boundingBoxOfPath
+        let scale = min(frame.width / ink.width, (10 * size.width / 320) / ink.height)
+        context.saveGState()
+        context.translateBy(x: frame.midX - ink.width * scale / 2, y: frame.minY + ink.height * scale)
+        context.scaleBy(x: scale, y: -scale)
+        context.translateBy(x: -ink.minX, y: -ink.minY)
+        context.addPath(path)
+        context.setFillColor((color ?? (base.identifier == "com.delta.nes.standard" ? .black : .white)).cgColor)
+        context.fillPath()
+        context.restoreGState()
     }
     private func drawMenu(in frame: CGRect) {
         let box = frame.insetBy(dx: 1, dy: 1)

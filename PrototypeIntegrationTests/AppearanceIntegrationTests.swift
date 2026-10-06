@@ -6,6 +6,67 @@ import ZIPFoundation
 @testable import Delta
 
 @MainActor final class AppearanceIntegrationTests: XCTestCase {
+    func testPortraitWordmarkPreservesRenderedStockShouldersAndCasingStrip() throws {
+        let native = try XCTUnwrap(DeltaCore.ControllerSkin.standardControllerSkin(for: System.gba.gameType))
+        for (width, display) in [(375.0, DeltaCore.ControllerSkin.DisplayType.standard), (430.0, .edgeToEdge)] {
+            let traits = DeltaCore.ControllerSkin.Traits(device: .iphone, displayType: display, orientation: .portrait)
+            let aspect = try XCTUnwrap(native.aspectRatio(for: traits))
+            let size = CGSize(width: width, height: width * aspect.height / aspect.width)
+            let stock = BoundStockControllerSkin(base: native, canvasSize: size)
+            let original = try XCTUnwrap(native.items(for: traits))
+            let revised = try XCTUnwrap(stock.items(for: traits))
+            XCTAssertEqual(revised.map(\.frame), original.map(\.frame))
+            XCTAssertEqual(revised.map(\.extendedFrame), original.map(\.extendedFrame))
+            XCTAssertEqual(stock.aspectRatio(for: traits), aspect)
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1
+            func render(_ skin: ControllerSkinProtocol) -> UIImage {
+                let view = ControllerView(frame: CGRect(origin: .zero, size: size))
+                view.overrideControllerSkinTraits = traits
+                view.controllerSkin = skin
+                view.layoutIfNeeded()
+                return UIGraphicsImageRenderer(size: size, format: format).image { context in
+                    UIColor.black.setFill(); context.fill(CGRect(origin: .zero, size: size))
+                    view.layer.render(in: context.cgContext)
+                }
+            }
+            let before = render(native), after = render(stock)
+            func pixels(_ image: UIImage) throws -> [UInt8] {
+                let cg = try XCTUnwrap(image.cgImage)
+                var bytes = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+                try bytes.withUnsafeMutableBytes { buffer in
+                    let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height,
+                        bitsPerComponent: 8, bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                    // A CGImage-to-bitmap copy already preserves image row order.
+                    // Flipping here would compare the bottom branding as the top strip.
+                    context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                }
+                return bytes
+            }
+            let oldPixels = try pixels(before), newPixels = try pixels(after)
+            let wordmark = try XCTUnwrap(stock.portraitWordmarkFrame(size: size, traits: traits)).insetBy(dx: -1, dy: -1)
+            let stripHeight = Int(34 * width / 320)
+            var changedOutsideInk = 0, shoulderInk = 0, changedWordmark = 0
+            for y in 0..<stripHeight {
+                for x in 0..<Int(width) {
+                    let offset = (y * Int(width) + x) * 4
+                    let changed = (0..<4).contains { abs(Int(oldPixels[offset+$0])-Int(newPixels[offset+$0])) > 2 }
+                    if wordmark.contains(CGPoint(x: x, y: y)) {
+                        if changed { changedWordmark += 1 }
+                    } else if changed { changedOutsideInk += 1 }
+                    if x < Int(width / 4), oldPixels[offset] > 100 { shoulderInk += 1 }
+                }
+            }
+            XCTAssertEqual(changedOutsideInk, 0, "Shoulder artwork and original casing edge must be pixel-identical")
+            XCTAssertGreaterThan(changedWordmark, 20, "Render the replacement wordmark")
+            XCTAssertGreaterThan(shoulderInk, 100, "Compare real rendered L/R assets, not empty views")
+            for (name, image) in [("Stock-Delta-portrait-\(Int(width))", before), ("Bound-portrait-wordmark-\(Int(width))", after)] {
+                let attachment = XCTAttachment(image: image); attachment.name = name
+                attachment.lifetime = .keepAlways; add(attachment)
+            }
+        }
+    }
+
     func testMinimalDrawingPreservesNativeAndCustomizedGeometryAndInput() throws {
         let native = try XCTUnwrap(DeltaCore.ControllerSkin.standardControllerSkin(for: System.gba.gameType))
         for orientation in [DeltaCore.ControllerSkin.Orientation.portrait, .landscape] {

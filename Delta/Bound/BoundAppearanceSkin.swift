@@ -44,6 +44,9 @@ final class BoundMinimalControllerSkin: ControllerSkinProtocol {
         return UIGraphicsImageRenderer(size: canvasSize).image { context in
             let fill = (pressed ? UIColor.systemGray2 : UIColor.secondarySystemBackground).resolvedColor(with: appearance)
             let ink = UIColor.label.resolvedColor(with: appearance)
+            if let stock = base as? BoundStockControllerSkin {
+                stock.drawPortraitWordmark(in: context.cgContext, size: canvasSize, traits: traits, color: .white)
+            }
             for item in items where item.kind == .button || item.kind == .dPad {
                 let nativeFrame = item.frame.applying(.init(scaleX: canvasSize.width, y: canvasSize.height))
                 guard nativeFrame.width > 0, nativeFrame.height > 0 else { continue }
