@@ -47,6 +47,14 @@ The [source audit and provenance](PrivacyManifests/README.md) cover two narrow b
 
 The binary import audit also found missing per-framework manifest coverage for file-metadata APIs in Agoraffmpeg and GBADeltaCore; file-metadata/defaults APIs in MelonDSDeltaCore; file-metadata/boot-time APIs in N64DeltaCore and aosl; and defaults APIs in OperatorKit. Imports identify review targets; correct reasons still require source or vendor evidence. No vendor declarations were fabricated. DeltaCore now includes a locally audited boot-time declaration through a project-only resource packaging patch; its upstream revision and runtime source remain unchanged.
 
+## Device identifier cleanup
+
+Removed the hardcoded `ALTDeviceID` from the app Info.plist. This was a device-specific value for AltKit, not the app's bundle ID or signing team. Release already disables AltJIT in `Settings.registerDefaults()`, and no renderer, scheduler, core, transport, entitlement, or dependency implementation changed. A future separately authorized sideloading workflow must supply its own device metadata rather than distribute one developer device's identifier.
+
+An independent unsigned archive succeeded from an isolated checkout based on `986ed021` with this cleanup, using Xcode 27.0 / iOS 27.0. The app and all 19 embedded frameworks are arm64, the app's dSYM UUID matches, the primary icon metadata is present, and the app manifest matches source. The SDK verifier passed all 99 source/integration hashes and both locally audited manifests in source and archive. All 47 model tests and 16,879 pinned-source checks passed. No `ALTDeviceID`, loose ROM/save files, provisioning profile, or private signing-key files were found in the resulting app. Checked QA launch-argument strings were absent from its Release executable. Physical-device and live-network behavior were not revalidated for this plist-only change.
+
+Evidence is under ignored `.build/readiness/` (`archive-final.log`, `archive-audit.json`, `models-latest.log`, `sources-latest.log`), with the local artifact at `.build/Bound-readiness-final.xcarchive`. The archive command below can also be run with `CODE_SIGNING_ALLOWED=NO` to avoid using any signing identity. An unsigned archive is engineering evidence only and cannot be uploaded as a TestFlight distribution package. App Store Connect record identity and uploaded build numbers still require read-only account verification before choosing the permanent release bundle ID or next build number.
+
 ## Local archive command
 
 From the repository root, with existing authorized signing assets:
