@@ -17,9 +17,11 @@ private final class FrameProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var stamps: [Double] = []
     private var costs: [Double] = []
-    func record(at stamp: Double, cost: Double) { lock.lock(); stamps.append(stamp); costs.append(cost); lock.unlock() }
+    private var recording = true
+    func record(at stamp: Double, cost: Double) { lock.lock(); defer { lock.unlock() }; guard recording else { return }; stamps.append(stamp); costs.append(cost) }
+    func stop() { lock.lock(); recording = false; lock.unlock() }
     func snapshot() -> ([Double], [Double]) { lock.lock(); defer { lock.unlock() }; return (stamps, costs) }
-    func reset() { lock.lock(); stamps.removeAll(keepingCapacity: true); costs.removeAll(keepingCapacity: true); lock.unlock() }
+    func reset() { lock.lock(); recording = true; stamps.removeAll(keepingCapacity: true); costs.removeAll(keepingCapacity: true); lock.unlock() }
 }
 private final class TransitionCount: @unchecked Sendable {
     private let lock = NSLock()
@@ -653,6 +655,18 @@ extension PlaybackSharingTests {
         XCTAssertTrue(imported.1.isEmpty)
         let game = try XCTUnwrap(imported.0.first)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let controllers = ExternalGameControllerManager.shared
+        let savedAutomaticIndexes = controllers.automaticallyAssignsPlayerIndexes
+        let savedControllerIndexes = controllers.connectedControllers.map { ($0, $0.playerIndex) }
+        let savedLocalIndex = Settings.localControllerPlayerIndex
+        controllers.automaticallyAssignsPlayerIndexes = false
+        controllers.connectedControllers.forEach { $0.playerIndex = nil }
+        Settings.localControllerPlayerIndex = 0
+        defer {
+            controllers.automaticallyAssignsPlayerIndexes = savedAutomaticIndexes
+            savedControllerIndexes.forEach { $0.0.playerIndex = $0.1 }
+            Settings.localControllerPlayerIndex = savedLocalIndex
+        }
         let preferences = BoundAppearancePreferences(), savedTheme = preferences.theme, savedLayout = preferences.screenLayout
         let original = try XCTUnwrap(class_getInstanceMethod(CAMetalLayer.self, #selector(CAMetalLayer.nextDrawable)))
         let replacement = try XCTUnwrap(class_getInstanceMethod(CAMetalLayer.self, #selector(CAMetalLayer.boundTestNextDrawable)))
@@ -679,8 +693,13 @@ extension PlaybackSharingTests {
         }
         var rows: [[String: Any]] = []
         // Reverse the order on every other repeat to expose order effects.
-        let modes = ["native-controller-gl", "native-controller-metal", "bound-classic", "bound-arrangement"]
-        for repeatIndex in 0..<(smoke ? 1 : 3) {
+        let standardModes = ["native-controller-gl", "native-controller-metal", "bound-classic", "bound-arrangement"]
+        let requestedModes = ProcessInfo.processInfo.environment["BOUND_APP_PACING_MODES"]?.split(separator: ",").map(String.init)
+        let modes = requestedModes ?? standardModes
+        XCTAssertFalse(modes.isEmpty)
+        XCTAssertTrue(modes.allSatisfy { standardModes.contains($0) })
+        let repeats = ProcessInfo.processInfo.environment["BOUND_APP_PACING_REPEATS"] == "1" ? 1 : (smoke ? 1 : 3)
+        for repeatIndex in 0..<repeats {
             for mode in repeatIndex.isMultiple(of: 2) ? modes : Array(modes.reversed()) {
                 let native = mode.hasPrefix("native-"), usesMetal = mode != "native-controller-gl"
                 preferences.screenLayout = mode == "bound-arrangement" ? .bound : .delta
@@ -691,7 +710,12 @@ extension PlaybackSharingTests {
                 owner.loadViewIfNeeded(); owner.game = game
                 owner.controllerView.playerIndex = 0
                 let window = UIWindow(windowScene: scene)
-                window.rootViewController = owner; window.makeKeyAndVisible(); owner.view.layoutIfNeeded()
+                window.rootViewController = owner; window.makeKeyAndVisible()
+                // Appearance starts the existing core on its native queue. Refresh
+                // controller settings after attachment so upstream can load its skin.
+                NotificationCenter.default.post(name: Settings.didChangeNotification, object: nil,
+                    userInfo: [Settings.NotificationUserInfoKey.name: Settings.Name.localControllerPlayerIndex])
+                owner.view.layoutIfNeeded()
                 let core = try XCTUnwrap(owner.emulatorCore)
                 let prior = core.updateHandler, callbacks = FrameProbe(), presentations = FrameProbe(), ticks = AppPacingTicks()
                 core.updateHandler = { core in
@@ -703,12 +727,23 @@ extension PlaybackSharingTests {
                 // Starting here too can race that queue's synchronous main hop.
                 try await wait(warmup) // Equal warmup, excluded from every distribution.
                 XCTAssertEqual(core.state, .running)
+                XCTAssertEqual(core.rate, 1)
+                XCTAssertFalse(controllers.connectedControllers.contains { $0.playerIndex != nil })
+                XCTAssertFalse(owner.controllerView.isHidden)
+                XCTAssertNotNil(owner.controllerView.controllerSkin)
+                XCTAssertNotNil(owner.controllerView.controllerSkinTraits)
+                XCTAssertNotNil(owner.gameView.outputImage)
+                XCTAssertEqual(owner.controllerView.playerIndex, 0)
                 let layer = metalLayer(owner.gameView.layer)
                 if usesMetal { XCTAssertNotNil(layer) }
                 AppPacingDrawableObserver.shared.observe(layer, probe: presentations)
+                let measurementStartedAt = Date().timeIntervalSince1970
                 callbacks.reset(); ticks.start()
                 try await wait(duration)
                 ticks.stop(); AppPacingDrawableObserver.shared.observe(nil, probe: nil)
+                // Freeze callback observations before any post-measurement layout work.
+                callbacks.stop(); core.updateHandler = prior
+                let measurementEndedAt = Date().timeIntervalSince1970
                 let callbackSummary = summary(callbacks), presentationSummary = summary(presentations), tickSummary = summary(ticks.probe)
                 XCTAssertGreaterThan(callbacks.snapshot().0.count, smoke ? 10 : 500)
                 if usesMetal { XCTAssertGreaterThan(presentations.snapshot().0.count, smoke ? 3 : 100) }
@@ -721,9 +756,15 @@ extension PlaybackSharingTests {
                 let frame = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
                 var row: [String: Any] = ["mode": mode, "repeat": repeatIndex, "configuration": _isDebugAssertConfiguration() ? "Debug" : "Release",
                     "baselineScope": native ? "DeltaCore native controller; not original Delta app" : "actual Bound app controller and companion coordinator",
-                    "renderer": usesMetal ? "Metal" : "OpenGL", "sharing": "off", "speed": 1,
+                    "renderer": usesMetal ? "Metal" : "OpenGL", "sharing": "off", "speed": core.rate,
+                    "measurementStartUnix": measurementStartedAt, "measurementEndUnix": measurementEndedAt,
                     "smokeOnly": smoke, "warmupSeconds": warmup, "sampleSeconds": duration, "screenPoints": [window.bounds.width, window.bounds.height],
                     "gameFramePoints": [frame.minX, frame.minY, frame.width, frame.height],
+                    "controllerVisible": !owner.controllerView.isHidden,
+                    "controllerSkin": owner.controllerView.controllerSkin?.identifier ?? "missing",
+                    "controllerTraits": String(describing: owner.controllerView.controllerSkinTraits),
+                    "controllerFramePoints": [owner.controllerView.frame.minX, owner.controllerView.frame.minY, owner.controllerView.frame.width, owner.controllerView.frame.height],
+                    "externalControllerCount": ExternalGameControllerManager.shared.connectedControllers.count,
                     "drawablePixels": layer.map { [$0.drawableSize.width, $0.drawableSize.height] } ?? [],
                     "coreCallbacks": callbackSummary, "metalDrawableObservations": presentationSummary,
                     "metalMetric": ProcessInfo.processInfo.environment["SIMULATOR_UDID"] == nil ? "actual presented timestamps" : "drawable acquisitions; presentation timestamps unavailable in Simulator SDK",
@@ -734,6 +775,11 @@ extension PlaybackSharingTests {
                 row["rawDrawableObservationSeconds"] = presentations.snapshot().0
                 row["rawMainTickSeconds"] = ticks.probe.snapshot().0
                 rows.append(row)
+                let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+                    window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+                }
+                let screenshot = XCTAttachment(image: image)
+                screenshot.name = "pacing-\(mode)-\(repeatIndex)"; screenshot.lifetime = .keepAlways; add(screenshot)
                 _ = core.stop(); core.updateHandler = prior
                 owner.game = nil; window.isHidden = true; window.rootViewController = nil
                 withExtendedLifetime(nativeDelegate) {}
