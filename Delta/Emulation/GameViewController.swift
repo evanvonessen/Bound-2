@@ -94,6 +94,20 @@ class GameViewController: DeltaCore.GameViewController
 {
     private let boundCompanion = BoundCompanionCoordinator()
     private var boundControllerModeActive = false
+    private struct BoundControlConfiguration: Equatable {
+        let skin: String
+        let layout: BoundControlLayout
+        let canvas: CGSize
+        let source: CGRect
+        let insets: UIEdgeInsets
+        let gutter: CGRect?
+        let minimal: Bool
+        let controllerMode: Bool
+        let style: UIUserInterfaceStyle
+        let contrast: UIAccessibilityContrast
+    }
+    private var boundControlConfiguration: BoundControlConfiguration?
+    private var boundAppliedSkinIdentifier: String?
     private let boundPanelActions = BoundPanelActionRouter()
     /// Assumed to be Delta.Game instance
     override var game: GameProtocol? {
@@ -2853,15 +2867,28 @@ extension GameViewController {
             // so a nested layout pass cannot repeat this transition.
             updateControllers()
         }
+        let minimal = BoundAppearancePreferences().theme == .minimal
+        let source = nativeBoundControllerFrame(base: base)
+        let insets = nativeBoundControllerInsets(base: base)
+        let gutter = nativeBoundLandscapeControlGutter(base: base)
+        let configuration = BoundControlConfiguration(skin: base.identifier, layout: layout, canvas: view.bounds.size,
+            source: source, insets: insets, gutter: gutter, minimal: minimal, controllerMode: mode,
+            style: traitCollection.userInterfaceStyle, contrast: traitCollection.accessibilityContrast)
+        // A settled layout must not recreate wrappers or serialize placements.
+        // Also verify the applied identity, because upstream may replace the skin.
+        if configuration == boundControlConfiguration,
+           controllerView.controllerSkin?.identifier == boundAppliedSkinIdentifier { return }
         controllerView.usesControlOnlyHitTesting = mode || !layout.positions.isEmpty
         controllerLayoutBounds = layout.positions.isEmpty ? nil : view.bounds
-        let minimal = BoundAppearancePreferences().theme == .minimal
         controllerLayoutSize = layout.positions.isEmpty && !minimal ? nil : nativeBoundControllerSize()
-        let stock = BoundStockControllerSkin(base: base, canvasSize: nativeBoundControllerFrame(base: base).size, contentInsets: nativeBoundControllerInsets(base: base), boundLandscapeGutter: nativeBoundLandscapeControlGutter(base: base))
-        var proposed: ControllerSkinProtocol = layout.positions.isEmpty ? stock : BoundPlacedControllerSkin(base: stock, layout: layout, canvasSize: view.bounds.size, sourceFrame: nativeBoundControllerFrame(base: base))
-        if minimal { proposed = BoundMinimalControllerSkin(base: proposed, canvasSize: layout.positions.isEmpty ? nativeBoundControllerFrame(base: base).size : view.bounds.size, traits: traitCollection) }
+        let stock = BoundStockControllerSkin(base: base, canvasSize: source.size, contentInsets: insets, boundLandscapeGutter: gutter)
+        var proposed: ControllerSkinProtocol = layout.positions.isEmpty ? stock : BoundPlacedControllerSkin(base: stock, layout: layout, canvasSize: view.bounds.size, sourceFrame: source)
+        if minimal { proposed = BoundMinimalControllerSkin(base: proposed, canvasSize: layout.positions.isEmpty ? source.size : view.bounds.size, traits: traitCollection) }
         if mode { proposed = BoundControllerModeSkin(base: proposed) }
-        if current.identifier != proposed.identifier { controllerView.cancelTouchInputs(); controllerView.controllerSkin = proposed }
+        let identifier = proposed.identifier
+        if controllerView.controllerSkin?.identifier != identifier { controllerView.cancelTouchInputs(); controllerView.controllerSkin = proposed }
+        boundControlConfiguration = configuration
+        boundAppliedSkinIdentifier = identifier
     }
     private func cancelBoundTouchInputsPreservingExternalHolds() {
         BoundControllerModeSkin.cancelTouchInputs(in: controllerView,

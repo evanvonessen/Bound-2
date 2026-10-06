@@ -225,6 +225,7 @@ final class BoundCompanionCoordinator {
         if state.landscape || BoundAppearancePreferences().screenLayout == .delta {
             layoutFloatingPanel()
         }
+        sharing.setRemotePresentationEnabled(state.content == .friend && overlay?.isHidden == false)
         if let controls { owner.view.bringSubviewToFront(controls) }
     }
     /// One final placement, using the settled native viewport and actual hit regions.
@@ -412,7 +413,7 @@ final class BoundCompanionCoordinator {
         if usesLocalPairedFixture { sharing.start() }
         #endif
     }
-    func background() { cancelInteractions(); tap.setEnabled(false); sharing.background() }
+    func background() { cancelInteractions(); tap.setEnabled(false); sharing.background(); onboarding.close() }
     func stop() {
         cancelInteractions(); tap.setEnabled(false); sharing.stop(); onboarding.close()
         notesPaused = false; isEditingNotes = false; owner?.controllerView.isUserInteractionEnabled = true; host?.view.endEditing(true)
@@ -642,6 +643,7 @@ private struct BoundFriendsSheet: View {
     @ObservedObject var sharing: FriendSharingSession
     @ObservedObject var onboarding: FriendOnboarding
     @ObservedObject var account: BoundFriendAccount
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var password = ""
@@ -691,6 +693,12 @@ private struct BoundFriendsSheet: View {
                 }
             }.navigationTitle("Friends")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }.onAppear { onboarding.open(sharing: sharing, existing: { account.session }) }.onDisappear(perform: closed)
+        }
+        .onAppear { onboarding.open(sharing: sharing, existing: { account.session }) }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { onboarding.open(sharing: sharing, existing: { account.session }) }
+            else { onboarding.close() }
+        }
+        .onDisappear { onboarding.close(); closed() }
     }
 }

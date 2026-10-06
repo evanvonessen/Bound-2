@@ -199,8 +199,9 @@ final class FriendSharingSession: ObservableObject {
     @Published private(set) var active = false
     @Published private(set) var joined = false
     @Published private(set) var reconnecting = false
-    @Published private(set) var receivedFrames = 0
-    @Published private(set) var publishedFrames = 0
+    // Numeric counters feed diagnostics, not the production companion UI.
+    private(set) var receivedFrames = 0
+    private(set) var publishedFrames = 0
     @Published private(set) var remoteVisible = false
     private(set) var configuration: FriendSharingConfiguration?
     private(set) var authenticatedMode: Bool
@@ -224,6 +225,8 @@ final class FriendSharingSession: ObservableObject {
     private var recoveryCompletions = 0
     private var recoveryTimeouts = 0
     private var receiverDisplayLink: FriendSharingDisplayLink?
+    private var remotePresentationEnabled = true
+    func setRemotePresentationEnabled(_ enabled: Bool) { remotePresentationEnabled = enabled }
     private var sequence: UInt64 = 0
     private var captureClock = FriendSharingCaptureClock()
     private var publicationToken: SharingSessionToken?
@@ -438,14 +441,18 @@ final class FriendSharingSession: ObservableObject {
         // driven solely by displayed emulator frames, never this display callback.
         receiverDisplayLink = FriendSharingDisplayLink { [weak self] timestamp in
             guard let self, self.generation == run, self.active else { return }
+            #if DEBUG
             if let last = self.lastDisplayTick {
                 self.largestDisplayGap = max(self.largestDisplayGap, timestamp - last)
             }
             self.lastDisplayTick = timestamp
+            #endif
             if self.authenticatedMode && (self.authenticatedSession?()?.owner != self.tokenOwner || (self.tokenExpiry ?? 0) <= Date().timeIntervalSince1970) {
                 self.stop(); self.status = "Sign in to share"; return
             }
-            self.transport.presentLatestFrame()
+            // Keep receiving/publishing while Notes, Types or a hidden PiP is
+            // selected. Consume the bounded latest-frame mailbox only when visible.
+            if self.remotePresentationEnabled { self.transport.presentLatestFrame() }
             let cadence = self.receiverCadence.tick(at: timestamp)
             let received = self.transport.receivedFrames
             let visible = received > 0

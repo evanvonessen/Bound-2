@@ -28,7 +28,9 @@ final class FriendOnboarding: ObservableObject {
     @Published private(set) var managesFlow = false
     private var permitsRTC = true
     private var ownerID: UUID?
-    private var observation: FriendSharingTimer?
+    private var observation: (any SharingCancellation)?
+    private var isOpen = false
+    private let observeAccount: @MainActor (@escaping @MainActor () -> Void) -> any SharingCancellation
     private var reusedSession: (() -> AppCloudSession?)?
     private weak var sharing: FriendSharingSession?
     private var generation = UUID()
@@ -40,7 +42,9 @@ final class FriendOnboarding: ObservableObject {
         let response = try JSONDecoder().decode(FriendResponse.self, from: bytes)
         guard response.ok else { throw FriendSharingTokenError.unavailable }
         return response
-    }) { self.call = call }
+    }, observeAccount: @escaping @MainActor (@escaping @MainActor () -> Void) -> any SharingCancellation = {
+        FriendSharingTimer(after: 1, repeating: true, action: $0)
+    }) { self.call = call; self.observeAccount = observeAccount }
 
     deinit {
         task?.cancel()
@@ -48,24 +52,31 @@ final class FriendOnboarding: ObservableObject {
         BoundMainActorDisposal.enqueue { observation?.cancel() }
     }
     func open(sharing: FriendSharingSession, existing: (() -> AppCloudSession?)?) {
+        let wasOpen = isOpen
+        isOpen = true
         self.sharing = sharing; reusedSession = existing
         if !permitsRTC {
             managesFlow = true
             sharing.configureAuthenticatedRoom(nil, identity: { nil })
         }
         if observation == nil {
-            observation = FriendSharingTimer(after: 1, repeating: true) { [weak self] in self?.synchronizeAccount() }
+            observation = observeAccount { [weak self] in
+                guard let self, self.isOpen else { return }
+                self.synchronizeAccount()
+            }
         }
         synchronizeAccount()
+        if !wasOpen && signedIn && !busy { refresh() }
     }
     /// Reads only the current account owner; no password grant, refresh or network
     /// work occurs here. Login may finish after Saves is opened or dismissed.
     func synchronizeAccount() {
+        guard isOpen else { return }
         let candidate = reusedSession?()
         let current = candidate.flatMap { (try? $0.credentials()) == nil ? nil : $0 }
         guard current?.owner != ownerID else { return }
         let hadAccount = ownerID != nil
-        close(); ownerID = nil; signedIn = false; rooms = []; selected = nil
+        cancelPendingRequest(); ownerID = nil; signedIn = false; rooms = []; selected = nil
         if hadAccount || current != nil || managesFlow {
             managesFlow = true
             sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() })
@@ -74,7 +85,16 @@ final class FriendOnboarding: ObservableObject {
         ownerID = current.owner; signedIn = true; message = "Choose a friend or exchange an invite."
         refresh()
     }
-    func close() { generation = UUID(); task?.cancel(); task = nil; busy = false; inviteCode = nil }
+    func close() {
+        isOpen = false
+        observation?.cancel(); observation = nil
+        cancelPendingRequest()
+        // Keep the selected room and live identity provider: closing Friends
+        // must not terminate an active sharing session.
+    }
+    private func cancelPendingRequest() {
+        generation = UUID(); task?.cancel(); task = nil; busy = false; inviteCode = nil
+    }
     private func sharingIdentity() -> AppCloudSession? { permitsRTC ? currentIdentity() : nil }
     static func mockNamespace(arguments: [String]) -> UUID? {
         #if DEBUG && targetEnvironment(simulator)
@@ -102,7 +122,7 @@ final class FriendOnboarding: ObservableObject {
         return current
     }
     func signOut() {
-        close(); ownerID = nil; signedIn = false; managesFlow = true
+        cancelPendingRequest(); ownerID = nil; signedIn = false; managesFlow = true
         rooms = []; selected = nil; message = "Sign in above to add a friend."
         sharing?.configureAuthenticatedRoom(nil, identity: { nil })
     }

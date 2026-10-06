@@ -6,6 +6,44 @@ import Security
 /// Synthetic credentials exercise the native Keychain and account lifecycle; no backend is contacted.
 @MainActor
 final class AccountPersistenceIntegrationTests: XCTestCase {
+    func testFriendsObservationStopsOnCloseAndResumesWithoutLosingOwnerChanges() throws {
+        let sharing = FriendSharingSession(configuration: nil, authenticatedMode: true)
+        var observations: [OnboardingObservation] = []
+        var reads = 0
+        var identity: AppCloudSession?
+        let onboarding = FriendOnboarding(call: { _, _, _ in FriendResponse(ok: true, rooms: []) }, observeAccount: { callback in
+            let observation = OnboardingObservation(callback)
+            observations.append(observation)
+            return observation
+        })
+        let provider = { reads += 1; return identity }
+        onboarding.open(sharing: sharing, existing: provider)
+        XCTAssertEqual(observations.count, 1)
+        observations[0].fire()
+        XCTAssertEqual(reads, 2)
+        onboarding.close()
+        XCTAssertTrue(observations[0].cancelled)
+        observations[0].fire() // A callback already queued before cancellation.
+        onboarding.synchronizeAccount()
+        XCTAssertEqual(reads, 2, "Dismissed/background Friends must not poll account state")
+        onboarding.open(sharing: sharing, existing: provider)
+        XCTAssertEqual(observations.count, 2)
+        let owner = UUID()
+        identity = try AppCloudSession(owner: owner, key: "synthetic-key", token: token(owner: owner))
+        observations[1].fire()
+        XCTAssertTrue(onboarding.signedIn)
+        XCTAssertFalse(observations[1].cancelled, "Changing owner must not cancel visible-sheet observation")
+        onboarding.signOut(); identity = nil
+        XCTAssertFalse(observations[1].cancelled)
+        observations[1].fire()
+        XCTAssertFalse(onboarding.signedIn)
+        onboarding.close()
+        let closedReads = reads
+        observations[1].fire()
+        XCTAssertEqual(reads, closedReads)
+        XCTAssertTrue(observations[1].cancelled)
+    }
+
     private func token(owner: UUID, expires: TimeInterval = 3600) throws -> String {
         let bytes = try JSONSerialization.data(withJSONObject: ["sub": owner.uuidString.lowercased(), "exp": Date().timeIntervalSince1970 + expires])
         let payload = bytes.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -77,4 +115,13 @@ final class AccountPersistenceIntegrationTests: XCTestCase {
         XCTAssertEqual(persisted.refreshToken, "synthetic-rotated-refresh")
         restored.signOut()
     }
+}
+
+@MainActor
+private final class OnboardingObservation: SharingCancellation {
+    private let callback: @MainActor () -> Void
+    private(set) var cancelled = false
+    init(_ callback: @escaping @MainActor () -> Void) { self.callback = callback }
+    func cancel() { cancelled = true }
+    func fire() { callback() }
 }

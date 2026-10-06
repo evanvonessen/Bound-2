@@ -78,13 +78,18 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
     func resetFrames(enabled: Bool) { lock.lock(); count = 0; frameGeneration &+= 1; acceptsFrames = enabled; convertedFrames = 0; replacedFrames = 0; busyDrops = 0; staleDrops = 0; lastReceivedAt = nil; lastConvertedAt = nil; pixelEvidence = [:]; firstRendered = false; latestPixels = nil; lock.unlock() }
     func onRenderVideoFrame(_ videoFrame: AgoraOutputVideoFrame, uid: UInt, channelId: String) -> Bool {
         guard uid == remoteUID else { return false }
-        receiveFrame(convert: {
+        let convert = { () -> Data? in
             guard videoFrame.type == 1, let y = videoFrame.yBuffer,
                   let u = videoFrame.uBuffer, let v = videoFrame.vBuffer else { return nil }
             return FriendSharingPixels.rgbaFromI420(width: Int(videoFrame.width), height: Int(videoFrame.height),
                 yStride: Int(videoFrame.yStride), uStride: Int(videoFrame.uStride), vStride: Int(videoFrame.vStride),
                 y: y, u: u, v: v)
-        }, evidence: { Self.sample(videoFrame) })
+        }
+        #if DEBUG
+        receiveFrame(convert: convert, evidence: { Self.sample(videoFrame) })
+        #else
+        receiveFrame(convert: convert)
+        #endif
         return true
     }
 
@@ -99,11 +104,15 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
         guard !converting else { busyDrops += 1; lock.unlock(); return }
         converting = true
         let generation = frameGeneration
+        #if DEBUG
         let sample = count == 1 || count % 12 == 0
+        #endif
         lock.unlock()
 
         let pixels = convert()
+        #if DEBUG
         let sampled = sample ? evidence() : nil
+        #endif
 
         lock.lock(); defer { lock.unlock() }
         converting = false
@@ -112,10 +121,13 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
             if latestPixels != nil { replacedFrames += 1 }
             latestPixels = pixels; convertedFrames += 1; lastConvertedAt = CACurrentMediaTime()
         }
+        #if DEBUG
         if let sampled { pixelEvidence = sampled }
+        #endif
     }
     // A small aggregate is sampled while the SDK owns the callback buffer. No
     // pixels, pointers, channel identifiers, or SDK text escape this callback.
+    #if DEBUG
     private static func sample(_ frame: AgoraOutputVideoFrame) -> [String: Int] {
         var result = ["decodedWidth": Int(frame.width), "decodedHeight": Int(frame.height),
                       "decodedType": frame.type, "sampleCount": 0]
@@ -158,6 +170,7 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
         }
         return result
     }
+    #endif
     func rtcEngine(_ engine: AgoraRtcEngineKit, firstRemoteVideoFrameOfUid uid: UInt, size: CGSize, elapsed: Int) {
         guard uid == remoteUID else { return }
         lock.lock(); firstRendered = true; lock.unlock()
@@ -169,12 +182,15 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
         event(.joined, nil)
     }
     func rtcEngine(_ engine: AgoraRtcEngineKit, didJoinedOfUid uid: UInt, elapsed: Int) {
+        #if DEBUG
         lock.lock()
         sdkEvidence["sdkPeerJoins", default: 0] += 1
         if uid == remoteUID { sdkEvidence["sdkExpectedPeerJoins", default: 0] += 1 }
         lock.unlock()
+        #endif
         if uid == remoteUID { resetFrames(enabled: true); event(.remoteFrame, uid) }
     }
+    #if DEBUG
     func rtcEngine(_ engine: AgoraRtcEngineKit, firstLocalVideoFramePublishedWithElapsed elapsed: Int,
                    sourceType: AgoraVideoSourceType) {
         lock.lock(); sdkEvidence["sdkFirstPublished"] = 1; lock.unlock()
@@ -203,6 +219,7 @@ final class AgoraSharingCallbacks: NSObject, AgoraRtcEngineDelegate, AgoraVideoF
         sdkEvidence["sdkRemoteReason"] = Int(reason.rawValue)
         lock.unlock()
     }
+    #endif
     func rtcEngine(_ engine: AgoraRtcEngineKit, didOfflineOfUid uid: UInt, reason: AgoraUserOfflineReason) {
         if uid == remoteUID { resetFrames(enabled: false); event(.remoteGone, uid) }
     }

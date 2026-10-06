@@ -80,7 +80,11 @@ private final class TransitionCount: @unchecked Sendable {
         }
         return pending
     }
-    func presentLatestFrame() { if let host, let pixels = callbacks.takeLatestPixels() { presenter.present(pixels, in: host) } }
+    private(set) var presentationCalls = 0
+    func presentLatestFrame() {
+        presentationCalls += 1
+        if let host, let pixels = callbacks.takeLatestPixels() { presenter.present(pixels, in: host) }
+    }
     func interrupt() { callbacks.suspendFrames(); presenter.clear(); event?(.reconnecting) }
     func recover() { callbacks.resumeFrames(); event?(.rejoined) }
 }
@@ -147,6 +151,44 @@ private final class TransitionCount: @unchecked Sendable {
         try await wait(0.1); XCTAssertTrue(transport.presenter.isVisible)
         session.stop(); XCTAssertFalse(transport.presenter.isVisible)
     }
+    func testHiddenFriendKeepsSharingWithoutPresentingImages() async throws {
+        let transport = OfflineVideoTransport()
+        let session = FriendSharingSession(configuration: configuration(), transport: transport, authenticatedMode: false)
+        session.setRemotePresentationEnabled(false)
+        session.start(); defer { session.stop() }
+        for i in 1...4 {
+            session.receivePlaybackFrame(GameFrame(rgba: FriendSharingPixels.rgba(sequence: UInt64(i), uid: 1), number: UInt64(i), buttons: 0))
+            try await wait(0.1)
+        }
+        XCTAssertTrue(session.active); XCTAssertTrue(session.joined)
+        XCTAssertGreaterThan(transport.publishedFrames, 0)
+        XCTAssertGreaterThan(transport.receivedFrames, 0)
+        XCTAssertEqual(transport.presentationCalls, 0)
+        XCTAssertFalse(transport.presenter.isVisible)
+        session.setRemotePresentationEnabled(true)
+        for _ in 0..<20 where !transport.presenter.isVisible { try await wait(0.05) }
+        XCTAssertTrue(transport.presenter.isVisible, "Returning to Friend presents the newest retained frame")
+        XCTAssertGreaterThan(transport.presentationCalls, 0)
+        session.setRemotePresentationEnabled(false)
+        let calls = transport.presentationCalls
+        try await wait(0.15)
+        XCTAssertEqual(transport.presentationCalls, calls)
+        XCTAssertTrue(session.active)
+    }
+    func testDecodedFrameDiagnosticsAreDisabledInRelease() {
+        let callbacks = AgoraSharingCallbacks(remoteUID: 2) { _, _ in }
+        var samples = 0
+        let bytes = Data(repeating: 42, count: SharingFrame.byteCount)
+        for _ in 0..<24 {
+            callbacks.receiveFrame(convert: { bytes }, evidence: { samples += 1; return ["sampleCount": 64] })
+        }
+        // The test target does not define DEBUG; its optimization configuration
+        // follows the host's Debug/Release configuration instead.
+        XCTAssertEqual(samples, _isDebugAssertConfiguration() ? 3 : 0)
+        XCTAssertEqual(callbacks.receivedFrames, 24)
+        XCTAssertEqual(callbacks.takeLatestPixels(), bytes)
+    }
+
     func testNativePlaybackPanelAndCaptureBenchmark() async throws {
         let bundle = Bundle(for: Self.self)
         let fixture = try XCTUnwrap(bundle.url(forResource: "BoundDiagnostic", withExtension: "gba"))

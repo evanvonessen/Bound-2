@@ -14,6 +14,29 @@ final class ControlPlacementTests: XCTestCase {
         store.save(.init(), skin: "gba", landscape: true)
         XCTAssertEqual(store.read(skin: "gba", landscape: true), .init())
     }
+    func testCachedLayoutTracksExternalEditsInvalidDataAndRemoval() throws {
+        let name = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let store = BoundControlPlacementStore(defaults: defaults)
+        let other = BoundControlPlacementStore(defaults: defaults)
+        let first = BoundControlLayout(positions: ["a": .init(x: 0.2, y: 0.8, scale: 1)])
+        let second = BoundControlLayout(positions: ["a": .init(x: 0.7, y: 0.6, scale: 1.2)])
+        other.save(first, skin: "gba", landscape: false)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), first)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), first)
+        other.save(second, skin: "gba", landscape: false)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), second)
+        XCTAssertEqual(store.read(skin: "gba", landscape: true), .init())
+        let key = "bound.controls.v1.gba.portrait"
+        defaults.set(Data("malformed".utf8), forKey: key)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), .init())
+        other.save(first, skin: "gba", landscape: false)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), first)
+        defaults.removeObject(forKey: key)
+        XCTAssertEqual(store.read(skin: "gba", landscape: false), .init())
+    }
+
     func testNormalizedGeometryClampsAndHonorsMinimumSizes() {
         let layout = BoundControlLayout(positions: ["a": .init(x: 1, y: 0, scale: 0.7), "dpad": .init(x: 0, y: 1, scale: 1.4)])
         let canvas = CGSize(width: 390, height: 844)

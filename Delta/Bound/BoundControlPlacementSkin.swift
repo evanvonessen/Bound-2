@@ -8,16 +8,15 @@ final class BoundPlacedControllerSkin: ControllerSkinProtocol {
     let canvasSize: CGSize
     /// Original native controller rectangle inside the full customization canvas.
     let sourceFrame: CGRect
+    let identifier: String
     init(base: ControllerSkinProtocol, layout: BoundControlLayout, canvasSize: CGSize, sourceFrame: CGRect? = nil) {
         self.base = base; self.layout = layout; self.canvasSize = canvasSize
         self.sourceFrame = sourceFrame ?? CGRect(origin: .zero, size: canvasSize)
-    }
-    var name: String { base.name }
-    var identifier: String {
         let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
         let encoded = (try? encoder.encode(layout))?.base64EncodedString() ?? "default"
-        return base.identifier + ".bound-placement." + encoded + "." + String(describing: canvasSize) + "." + String(describing: sourceFrame)
+        self.identifier = base.identifier + ".bound-placement." + encoded + "." + String(describing: canvasSize) + "." + String(describing: self.sourceFrame)
     }
+    var name: String { base.name }
     var gameType: GameType { base.gameType }
     var isDebugModeEnabled: Bool { base.isDebugModeEnabled }
     func supports(_ traits: DeltaCore.ControllerSkin.Traits) -> Bool { base.supports(traits) }
