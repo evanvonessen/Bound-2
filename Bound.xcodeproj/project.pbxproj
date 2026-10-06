@@ -32,6 +32,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		EB82D09672944343A7156C01 /* SDWebImage_Privacy.bundle in Resources */ = {isa = PBXBuildFile; fileRef = EB82D09672944343A7156C02 /* SDWebImage_Privacy.bundle */; };
 		10C306F1A66146C8B168ECA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */; };
 		47AF26DA565A4105BA138CAF /* AccountPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */; };
 		E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */ = {isa = PBXBuildFile; fileRef = 0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */; };
@@ -791,6 +792,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		EB82D09672944343A7156C02 /* SDWebImage_Privacy.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = PrivacyManifests/SDWebImage_Privacy.bundle; sourceTree = SOURCE_ROOT; };
 		74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "DEPENDENCY-INVENTORY.md"; path = "LICENSES/DEPENDENCY-INVENTORY.md"; sourceTree = SOURCE_ROOT; };
@@ -1937,6 +1939,7 @@
 		BFFA71DA1AAC406100EE9DD1 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				EB82D09672944343A7156C02 /* SDWebImage_Privacy.bundle */,
 				74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */,
 				BF090CF11B490D8300DCAB45 /* Delta-Bridging-Header.h */,
 				BF27CC861BC9E3C600A20D89 /* Delta.entitlements */,
@@ -2841,6 +2844,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB82D09672944343A7156C01 /* SDWebImage_Privacy.bundle in Resources */,
 				10C306F1A66146C8B168ECA1 /* PrivacyInfo.xcprivacy in Resources */,
 				E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */,
 				4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */,

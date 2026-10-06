@@ -79,11 +79,15 @@
     {
       "path": "PrototypePatches/dependency-signing.patch",
       "purpose": "Build pinned core/Systems dependencies unsigned and retain app-owned embedded-framework signing; upstream pins unchanged."
+    },
+    {
+      "path": "PrototypePatches/dependency-privacy.patch",
+      "purpose": "Bundle source-audited elapsed-time API declaration in DeltaCore.framework; no runtime changes or upstream pin change."
     }
   ],
   "sha256": {
     "Cores/DeltaCore/DeltaCore.podspec": "c32f647e5866f392ac5a664ab267149666345c41a47b255807736f3f24e7d63d",
-    "Cores/DeltaCore/DeltaCore.xcodeproj/project.pbxproj": "2dd58a77cbcae1572e6072591082eb5eec5d54a391824e92475d10084292170e",
+    "Cores/DeltaCore/DeltaCore.xcodeproj/project.pbxproj": "14bd86cd5309ca07090b10905ebc9ad236b673390f9eb9f17b09c0c0e4b32d02",
     "Cores/DeltaCore/DeltaCore.xcodeproj/project.xcworkspace/contents.xcworkspacedata": "c2a4b8a86d3c74a03110ddc9ce62410edebf3cd6d00ef00977f97f36e740aa55",
     "Cores/DeltaCore/DeltaCore.xcodeproj/project.xcworkspace/xcshareddata/DeltaCore.xcscmblueprint": "da93ec4502643307cf1db9629e37590bacd2f006f271f46e5ebebf4017832350",
     "Cores/DeltaCore/DeltaCore/Cores/DeltaCoreProtocol.swift": "69ec9e0e969c66044b30bc34883cebe4f5f3ee5e55ccbd4d6446ad22dd88d8da",

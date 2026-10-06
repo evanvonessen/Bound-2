@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EB82D09672944343A7156C03 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB82D09672944343A7156C04 /* PrivacyInfo.xcprivacy */; };
 		BF0B260B23E91745007BE38B /* Bundle+Resources.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0B260A23E91745007BE38B /* Bundle+Resources.swift */; };
 		BF0BC4FA225C138A000151C6 /* BitmapProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0BC4F9225C138A000151C6 /* BitmapProcessor.swift */; };
 		BF0BC4FD225C15E8000151C6 /* OpenGLESProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0BC4FC225C15E8000151C6 /* OpenGLESProcessor.swift */; };
@@ -101,6 +102,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		EB82D09672944343A7156C04 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ../../PrivacyManifests/DeltaCore/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
 		BF0B260A23E91745007BE38B /* Bundle+Resources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+Resources.swift"; sourceTree = "<group>"; };
 		BF0BC4F9225C138A000151C6 /* BitmapProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitmapProcessor.swift; sourceTree = "<group>"; };
 		BF0BC4FC225C15E8000151C6 /* OpenGLESProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenGLESProcessor.swift; sourceTree = "<group>"; };
@@ -259,6 +261,7 @@
 		BF46895F1AACF36800A2586D /* DeltaCore */ = {
 			isa = PBXGroup;
 			children = (
+				EB82D09672944343A7156C04 /* PrivacyInfo.xcprivacy */,
 				BF4689621AACF36800A2586D /* DeltaCore.h */,
 				BF69FBBD23E39C9D0051BEEA /* DeltaTypes.h */,
 				BFD27EF61D261E9B00E081A3 /* DeltaTypes.m */,
@@ -558,6 +561,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB82D09672944343A7156C03 /* PrivacyInfo.xcprivacy in Resources */,
 				BFA5FCF820D3810400A3C5AB /* KeyboardGameController.deltamapping in Resources */,
 				BFB3DD9E1F4233D800A10CDE /* MFiGameController.deltamapping in Resources */,
 			);
