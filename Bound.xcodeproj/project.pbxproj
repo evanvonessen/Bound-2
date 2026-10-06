@@ -32,6 +32,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		10C306F1A66146C8B168ECA1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */; };
 		47AF26DA565A4105BA138CAF /* AccountPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */; };
 		E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */ = {isa = PBXBuildFile; fileRef = 0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */; };
 		4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */ = {isa = PBXBuildFile; fileRef = 9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */; };
@@ -790,6 +791,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B2476C2B0032441E97FF3CD5 /* AccountPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		0058B1D4CAE94BCD8CADA177 /* DEPENDENCY-INVENTORY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "DEPENDENCY-INVENTORY.md"; path = "LICENSES/DEPENDENCY-INVENTORY.md"; sourceTree = SOURCE_ROOT; };
 		9A74828983EB415C965374E1 /* BOUND2-MODIFICATIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "BOUND2-MODIFICATIONS.md"; path = "LICENSES/BOUND2-MODIFICATIONS.md"; sourceTree = SOURCE_ROOT; };
@@ -1935,6 +1937,7 @@
 		BFFA71DA1AAC406100EE9DD1 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				74E4919A740A48EFAE101408 /* PrivacyInfo.xcprivacy */,
 				BF090CF11B490D8300DCAB45 /* Delta-Bridging-Header.h */,
 				BF27CC861BC9E3C600A20D89 /* Delta.entitlements */,
 				BFFA71DB1AAC406100EE9DD1 /* Info.plist */,
@@ -2838,6 +2841,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10C306F1A66146C8B168ECA1 /* PrivacyInfo.xcprivacy in Resources */,
 				E638143CC17A4C2C89AAD42A /* DEPENDENCY-INVENTORY.md in Resources */,
 				4B42F8FEAF5D49CE907FE459 /* BOUND2-MODIFICATIONS.md in Resources */,
 				29764E0164684F3CAA391DBD /* COPYING in Resources */,

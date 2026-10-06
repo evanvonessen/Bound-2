@@ -500,7 +500,7 @@
 		</dict>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Bound 2</string>
+	<string>Bound</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Early GameBoy.ttf</string>

@@ -6,7 +6,7 @@ Baseline: Delta `c1d3d068e019e6493eed45654569db3cc5beb86a`; DeltaCore `633dfa869
 
 ## Standalone app build
 
-Open **Bound.xcodeproj**, select **Bound** and Run (preparation is optional for ordinary builds). This is a native Delta app target, with explicit upstream dependency projects. No nested app build or old mGBA source is included. The internal target/module remains Delta to preserve upstream nib and vendored Pod identities. Version **0.5.5 (172)**, display **Bound 2**. See README for prerequisites and signing.
+Open **Bound.xcodeproj**, select **Bound** and Run (preparation is optional for ordinary builds). This is a native Delta app target, with explicit upstream dependency projects. No nested app build or old mGBA source is included. The internal target/module remains Delta to preserve upstream nib and vendored Pod identities. Version **0.5.5 (172)**, display **Bound**. See README for prerequisites and signing.
 
 ## Use
 
