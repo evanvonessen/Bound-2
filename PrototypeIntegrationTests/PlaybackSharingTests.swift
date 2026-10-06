@@ -2,8 +2,11 @@ import XCTest
 import UIKit
 import SwiftUI
 import CoreVideo
+import MetalKit
+import ObjectiveC
 import DeltaCore
 @testable import Delta
+@testable import class Delta.GameViewController
 
 private struct FixtureGame: GameProtocol {
     let fileURL: URL
@@ -16,6 +19,7 @@ private final class FrameProbe: @unchecked Sendable {
     private var costs: [Double] = []
     func record(at stamp: Double, cost: Double) { lock.lock(); stamps.append(stamp); costs.append(cost); lock.unlock() }
     func snapshot() -> ([Double], [Double]) { lock.lock(); defer { lock.unlock() }; return (stamps, costs) }
+    func reset() { lock.lock(); stamps.removeAll(keepingCapacity: true); costs.removeAll(keepingCapacity: true); lock.unlock() }
 }
 private final class TransitionCount: @unchecked Sendable {
     private let lock = NSLock()
@@ -537,5 +541,207 @@ extension PlaybackSharingTests {
         link.cancel()
         let onboarding = FriendOnboarding()
         onboarding.close()
+    }
+}
+
+/// This baseline is DeltaCore's native controller, not the original Delta app.
+/// The app cases instantiate the shipping Bound GameViewController/coordinator.
+/// Keep the distinction in every exported result and never infer phone parity.
+private final class AppPacingDrawableObserver: @unchecked Sendable {
+    static let shared = AppPacingDrawableObserver()
+    private let lock = NSLock()
+    private weak var layer: CAMetalLayer?
+    private var probe: FrameProbe?
+    func observe(_ layer: CAMetalLayer?, probe: FrameProbe?) {
+        lock.lock(); self.layer = layer; self.probe = probe; lock.unlock()
+    }
+    func received(_ drawable: CAMetalDrawable, from source: CAMetalLayer) {
+        lock.lock(); let target = source === layer ? probe : nil; lock.unlock()
+        guard let target else { return }
+        #if targetEnvironment(simulator)
+        // Simulator's Metal SDK intentionally omits presented handlers/times.
+        // This counts drawable acquisitions only, never displayed frames.
+        target.record(at: ProcessInfo.processInfo.systemUptime, cost: 0)
+        #else
+        drawable.addPresentedHandler { drawable in
+            // presentedTime is the drawable's presentation timestamp, not the
+            // emulator update callback or a guessed display-link timestamp.
+            if drawable.presentedTime > 0 { target.record(at: drawable.presentedTime, cost: 0) }
+        }
+        #endif
+    }
+}
+private extension CAMetalLayer {
+    @objc func boundTestNextDrawable() -> CAMetalDrawable? {
+        let drawable = boundTestNextDrawable() // Original IMP while exchanged.
+        if let drawable { AppPacingDrawableObserver.shared.received(drawable, from: self) }
+        return drawable
+    }
+}
+@MainActor private final class AppPacingTicks: NSObject {
+    let probe = FrameProbe()
+    private var link: CADisplayLink?
+    func start() {
+        let link = CADisplayLink(target: self, selector: #selector(tick))
+        link.preferredFramesPerSecond = 60; link.add(to: .main, forMode: .common); self.link = link
+    }
+    @objc private func tick(_ link: CADisplayLink) { probe.record(at: ProcessInfo.processInfo.systemUptime, cost: 0) }
+    func stop() { link?.invalidate(); link = nil }
+}
+private final class AppPacingNativeDelegate: GameViewControllerDelegate {
+    let metal: Bool
+    init(metal: Bool) { self.metal = metal }
+    func gameViewController(_ gameViewController: DeltaCore.GameViewController, optionsFor game: GameProtocol) -> [EmulatorCore.Option: Any] { [.metal: metal] }
+}
+
+extension PlaybackSharingTests {
+    func testNativeControllerPortraitGeometry() async throws {
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "BoundDiagnostic", withExtension: "gba"))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let owner = DeltaCore.GameViewController(), delegate = AppPacingNativeDelegate(metal: true)
+        owner.delegate = delegate; owner.automaticallyPausesWhileInactive = false
+        owner.loadViewIfNeeded()
+        owner.game = FixtureGame(fileURL: fixture, gameSaveURL: FileManager.default.temporaryDirectory.appendingPathComponent("portrait-geometry.sav"))
+        owner.controllerView.playerIndex = 0
+        let window = UIWindow(windowScene: scene); window.rootViewController = owner; window.makeKeyAndVisible()
+        defer { _ = owner.emulatorCore?.stop(); owner.game = nil; window.isHidden = true; window.rootViewController = nil }
+        try await wait(0.5); owner.view.layoutIfNeeded()
+        let traits = try XCTUnwrap(owner.controllerView.controllerSkinTraits)
+        let skin = try XCTUnwrap(owner.controllerView.controllerSkin)
+        let aspect = try XCTUnwrap(skin.aspectRatio(for: traits))
+        let controller = owner.controllerView.convert(owner.controllerView.bounds, to: owner.view)
+        let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
+        XCTAssertEqual(controller.maxY, owner.view.bounds.maxY, accuracy: 1)
+        XCTAssertEqual(controller.height, owner.view.bounds.width * aspect.height / aspect.width, accuracy: 1)
+        XCTAssertLessThanOrEqual(game.maxY, controller.minY + 1)
+        let items = try XCTUnwrap(skin.items(for: traits))
+        var rows: [[String: Any]] = []
+        for name in ["l", "r"] {
+            let item = try XCTUnwrap(items.first { $0.inputs.allInputs.contains { $0.stringValue == name } })
+            let frame = item.frame.applying(.init(scaleX: controller.width, y: controller.height)).offsetBy(dx: controller.minX, dy: controller.minY)
+            rows.append(["input": name, "frame": [frame.minX, frame.minY, frame.width, frame.height]])
+        }
+        let data = try JSONSerialization.data(withJSONObject: ["screen": [window.bounds.width, window.bounds.height],
+            "game": [game.minX, game.minY, game.width, game.height], "controller": [controller.minX, controller.minY, controller.width, controller.height],
+            "nativeShoulders": rows], options: [.prettyPrinted, .sortedKeys])
+        let geometry = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        geometry.name = "native-controller-portrait-geometry"; geometry.lifetime = .keepAlways; add(geometry)
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+        let screenshot = XCTAttachment(image: image)
+        screenshot.name = "Native-Delta-controller-portrait"; screenshot.lifetime = .keepAlways; add(screenshot)
+        withExtendedLifetime(delegate) {}
+    }
+
+    /// Opt-in because other UI/build work on the shared host invalidates timing.
+    /// Set BOUND_APP_PACING=1 in the generated xctestrun EnvironmentVariables.
+    func testActualAppAndNativeControllerPacing() async throws {
+        let runMode = ProcessInfo.processInfo.environment["BOUND_APP_PACING"]
+        guard runMode == "1" || runMode == "smoke" else {
+            throw XCTSkip("Requires an exclusive host timing slot and explicit opt-in")
+        }
+        // Smoke only validates the harness; its numbers are not performance evidence.
+        let smoke = runMode == "smoke", warmup = smoke ? 0.5 : 5.0, duration = smoke ? 1.0 : 15.0
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            DatabaseManager.shared.start { error in
+                if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+            }
+        }
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "BoundDiagnostic", withExtension: "gba"))
+        let imported = await withCheckedContinuation { continuation in
+            DatabaseManager.shared.importGames(at: [fixture]) { continuation.resume(returning: ($0, $1)) }
+        }
+        XCTAssertTrue(imported.1.isEmpty)
+        let game = try XCTUnwrap(imported.0.first)
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let preferences = BoundAppearancePreferences(), savedTheme = preferences.theme, savedLayout = preferences.screenLayout
+        let original = try XCTUnwrap(class_getInstanceMethod(CAMetalLayer.self, #selector(CAMetalLayer.nextDrawable)))
+        let replacement = try XCTUnwrap(class_getInstanceMethod(CAMetalLayer.self, #selector(CAMetalLayer.boundTestNextDrawable)))
+        method_exchangeImplementations(original, replacement)
+        defer {
+            AppPacingDrawableObserver.shared.observe(nil, probe: nil)
+            method_exchangeImplementations(original, replacement)
+            preferences.theme = savedTheme; preferences.screenLayout = savedLayout
+        }
+        preferences.theme = .delta
+        func metalLayer(_ layer: CALayer) -> CAMetalLayer? {
+            if let layer = layer as? CAMetalLayer { return layer }
+            return layer.sublayers?.compactMap { metalLayer($0) }.first
+        }
+        func summary(_ probe: FrameProbe) -> [String: Any] {
+            let (stamps, costs) = probe.snapshot()
+            let gaps = zip(stamps.dropFirst(), stamps).map { ($0 - $1) * 1000 }.filter { $0 >= 0 }.sorted()
+            guard !gaps.isEmpty else { return ["samples": stamps.count] }
+            func p(_ q: Double) -> Double { gaps[Int(Double(gaps.count - 1) * q)] }
+            return ["samples": stamps.count, "meanGapMs": gaps.reduce(0, +) / Double(gaps.count),
+                "p50GapMs": p(0.5), "p95GapMs": p(0.95), "p99GapMs": p(0.99), "maxGapMs": gaps.last!,
+                "gapsOver25Ms": gaps.filter { $0 > 25 }.count, "gapsOver50Ms": gaps.filter { $0 > 50 }.count,
+                "meanCallbackWorkMs": costs.reduce(0, +) / Double(max(1, costs.count))]
+        }
+        var rows: [[String: Any]] = []
+        // Reverse the order on every other repeat to expose order effects.
+        let modes = ["native-controller-gl", "native-controller-metal", "bound-classic", "bound-arrangement"]
+        for repeatIndex in 0..<(smoke ? 1 : 3) {
+            for mode in repeatIndex.isMultiple(of: 2) ? modes : Array(modes.reversed()) {
+                let native = mode.hasPrefix("native-"), usesMetal = mode != "native-controller-gl"
+                preferences.screenLayout = mode == "bound-arrangement" ? .bound : .delta
+                let owner: DeltaCore.GameViewController = native ? DeltaCore.GameViewController() : GameViewController()
+                let nativeDelegate = AppPacingNativeDelegate(metal: usesMetal)
+                if native { owner.delegate = nativeDelegate }
+                owner.automaticallyPausesWhileInactive = false
+                owner.loadViewIfNeeded(); owner.game = game
+                owner.controllerView.playerIndex = 0
+                let window = UIWindow(windowScene: scene)
+                window.rootViewController = owner; window.makeKeyAndVisible(); owner.view.layoutIfNeeded()
+                let core = try XCTUnwrap(owner.emulatorCore)
+                let prior = core.updateHandler, callbacks = FrameProbe(), presentations = FrameProbe(), ticks = AppPacingTicks()
+                core.updateHandler = { core in
+                    let start = ProcessInfo.processInfo.systemUptime
+                    prior?(core)
+                    callbacks.record(at: start, cost: (ProcessInfo.processInfo.systemUptime - start) * 1000)
+                }
+                // Let the controller's native appearance queue own startup.
+                // Starting here too can race that queue's synchronous main hop.
+                try await wait(warmup) // Equal warmup, excluded from every distribution.
+                XCTAssertEqual(core.state, .running)
+                let layer = metalLayer(owner.gameView.layer)
+                if usesMetal { XCTAssertNotNil(layer) }
+                AppPacingDrawableObserver.shared.observe(layer, probe: presentations)
+                callbacks.reset(); ticks.start()
+                try await wait(duration)
+                ticks.stop(); AppPacingDrawableObserver.shared.observe(nil, probe: nil)
+                let callbackSummary = summary(callbacks), presentationSummary = summary(presentations), tickSummary = summary(ticks.probe)
+                XCTAssertGreaterThan(callbacks.snapshot().0.count, smoke ? 10 : 500)
+                if usesMetal { XCTAssertGreaterThan(presentations.snapshot().0.count, smoke ? 3 : 100) }
+                var layoutCosts: [Double] = []
+                for _ in 0..<30 {
+                    let start = ProcessInfo.processInfo.systemUptime
+                    owner.view.setNeedsLayout(); owner.view.layoutIfNeeded()
+                    layoutCosts.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
+                }
+                let frame = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
+                var row: [String: Any] = ["mode": mode, "repeat": repeatIndex, "configuration": _isDebugAssertConfiguration() ? "Debug" : "Release",
+                    "baselineScope": native ? "DeltaCore native controller; not original Delta app" : "actual Bound app controller and companion coordinator",
+                    "renderer": usesMetal ? "Metal" : "OpenGL", "sharing": "off", "speed": 1,
+                    "smokeOnly": smoke, "warmupSeconds": warmup, "sampleSeconds": duration, "screenPoints": [window.bounds.width, window.bounds.height],
+                    "gameFramePoints": [frame.minX, frame.minY, frame.width, frame.height],
+                    "drawablePixels": layer.map { [$0.drawableSize.width, $0.drawableSize.height] } ?? [],
+                    "coreCallbacks": callbackSummary, "metalDrawableObservations": presentationSummary,
+                    "metalMetric": ProcessInfo.processInfo.environment["SIMULATOR_UDID"] == nil ? "actual presented timestamps" : "drawable acquisitions; presentation timestamps unavailable in Simulator SDK",
+                    "mainRunLoopTicks": tickSummary,
+                    "settledLayoutMeanMs": layoutCosts.reduce(0, +) / Double(layoutCosts.count)]
+                print("BOUND_APP_PACING \(row)")
+                row["rawCoreCallbackSeconds"] = callbacks.snapshot().0
+                row["rawDrawableObservationSeconds"] = presentations.snapshot().0
+                row["rawMainTickSeconds"] = ticks.probe.snapshot().0
+                rows.append(row)
+                _ = core.stop(); core.updateHandler = prior
+                owner.game = nil; window.isHidden = true; window.rootViewController = nil
+                withExtendedLifetime(nativeDelegate) {}
+                try await wait(0.3)
+            }
+        }
+        let data = try JSONSerialization.data(withJSONObject: rows, options: [.prettyPrinted, .sortedKeys])
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "actual-app-native-controller-pacing"; attachment.lifetime = .keepAlways; add(attachment)
     }
 }
