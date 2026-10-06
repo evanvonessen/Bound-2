@@ -1134,8 +1134,10 @@ final class FileImportUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add"].waitForExistence(timeout: 10))
         app.buttons["Add"].tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 20))
-        app.buttons["Browse"].firstMatch.tap()
-        let local = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "On My iPhone")).firstMatch
+        let local = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ OR label == %@", "On My iPhone", "On My iPad")).firstMatch
+        if !local.exists, app.buttons["Browse"].firstMatch.exists {
+            app.buttons["Browse"].firstMatch.tap()
+        }
         XCTAssertTrue(local.waitForExistence(timeout: 15)); local.tap()
         let bound = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@", "Delta Bound", "Bound"))
         XCTAssertTrue(bound.firstMatch.waitForExistence(timeout: 15))

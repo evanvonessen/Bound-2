@@ -15,13 +15,16 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
     }
     private var stock: Bool { ["gba", "gbc", "nes", "snes", "n64", "genesis", "ds"].contains { base.identifier == "com.delta." + $0 + ".standard" } }
     var name: String { base.name }
-    var identifier: String { base.identifier + ".bound-stock.v3." + String(describing: canvasSize) + String(describing: contentInsets) + String(describing: boundLandscapeGutter) }
+    var identifier: String { base.identifier + ".bound-stock.v4." + String(describing: canvasSize) + String(describing: contentInsets) + String(describing: boundLandscapeGutter) }
     var gameType: GameType { base.gameType }
     var isDebugModeEnabled: Bool { base.isDebugModeEnabled }
     func supports(_ traits: DeltaCore.ControllerSkin.Traits) -> Bool { base.supports(traits) }
     func supportedTraits(for traits: DeltaCore.ControllerSkin.Traits) -> DeltaCore.ControllerSkin.Traits? { base.supportedTraits(for: traits) }
     func items(for traits: DeltaCore.ControllerSkin.Traits) -> [DeltaCore.ControllerSkin.Item]? {
+        // Relocation clears the old artwork. Opaque Split View casings must
+        // retain their native Menu instead of exposing a hole in the skin.
         guard let original = base.items(for: traits), stock, traits.orientation == .landscape,
+              base.isTranslucent(for: traits) == true,
               ["com.delta.gba.standard", "com.delta.snes.standard", "com.delta.n64.standard"].contains(base.identifier),
               let left = original.first(where: { Self.hasInput("l", $0) }), canvasSize.height > 0, canvasSize.width > 0 else { return base.items(for: traits) }
         return original.map { item in
@@ -148,7 +151,99 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
                     }
                 }
             }
+            for patch in supplementalBrandingPatches(size: size, traits: traits) {
+                // Copy an adjacent unprinted piece of the same casing. Copy mode
+                // also replaces ink on transparent bezels without leaving a ghost.
+                let sx = patch.frame.width / patch.sample.width
+                let sy = patch.frame.height / patch.sample.height
+                context.cgContext.saveGState()
+                context.cgContext.clip(to: patch.frame)
+                image.draw(in: CGRect(x: patch.frame.minX - patch.sample.minX * sx,
+                                      y: patch.frame.minY - patch.sample.minY * sy,
+                                      width: size.width * sx, height: size.height * sy),
+                           blendMode: .copy, alpha: 1)
+                context.cgContext.restoreGState()
+                if patch.compact {
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.boldSystemFont(ofSize: patch.frame.height * 0.8),
+                        .foregroundColor: patch.color]
+                    let label = "B" as NSString
+                    let ink = label.size(withAttributes: attributes)
+                    label.draw(at: CGPoint(x: patch.frame.midX - ink.width/2,
+                                           y: patch.frame.midY - ink.height/2), withAttributes: attributes)
+                } else {
+                    drawWordmark(in: context.cgContext, frame: patch.frame.insetBy(dx: 3, dy: patch.frame.height * 0.16), color: patch.color)
+                }
+            }
         }
+    }
+    struct BrandingPatch {
+        let frame: CGRect
+        let sample: CGRect
+        var compact = false
+        var color = UIColor.white
+    }
+    /// Measured against the pinned stock artwork. This covers iPad's separate
+    /// casing assets (including Split View), plus GBC/DS landscape on iPhone.
+    /// It never edits a native item, touch region, game screen, or custom skin.
+    func supplementalBrandingPatches(size: CGSize, traits: DeltaCore.ControllerSkin.Traits) -> [BrandingPatch] {
+        guard stock else { return [] }
+        let tablet = traits.device == .ipad
+        let landscape = traits.orientation == .landscape
+        let split = traits.displayType == .splitView
+        let core = base.identifier
+        if core == "com.delta.ds.standard", tablet || landscape {
+            let controls = base.items(for: traits) ?? []
+            guard let a = controls.first(where: { Self.hasInput("a", $0) }),
+                  let b = controls.first(where: { Self.hasInput("b", $0) }),
+                  let x = controls.first(where: { Self.hasInput("x", $0) }),
+                  let y = controls.first(where: { Self.hasInput("y", $0) }) else { return [] }
+            let scale = CGAffineTransform(scaleX: size.width, y: size.height)
+            let gap = CGRect(x: y.frame.maxX, y: x.frame.maxY,
+                             width: a.frame.minX - y.frame.maxX,
+                             height: b.frame.minY - x.frame.maxY).applying(scale)
+            let frame = gap.insetBy(dx: gap.width * 0.08, dy: gap.height * 0.08)
+            let left = y.frame.applying(scale)
+            let sample = tablet
+                ? CGRect(x: left.minX, y: left.maxY + gap.height/2, width: frame.width, height: frame.height)
+                : CGRect(x: left.minX - gap.width * 0.6, y: frame.minY, width: gap.width * 0.15, height: frame.height)
+            return [BrandingPatch(frame: frame, sample: sample, compact: true,
+                                  color: UIColor(red: 0.58, green: 0.31, blue: 0.38, alpha: 1))]
+        }
+        if core == "com.delta.gbc.standard", landscape, !split {
+            let scale = size.height / (tablet ? 1024 : 375)
+            let frame = CGRect(x: size.width/2 - (tablet ? 76 : 44) * scale,
+                               y: (tablet ? 716 : 275) * scale,
+                               width: (tablet ? 152 : 88) * scale, height: (tablet ? 42 : 23) * scale)
+            let symbol = CGRect(x: size.width - (tablet ? 77 : 47) * scale,
+                                y: (tablet ? 944 : 332) * scale,
+                                width: (tablet ? 57 : 32) * scale, height: (tablet ? 54 : 31) * scale)
+            // Stay within the black bezel at every row; farther sideways its
+            // curved lower edge would copy a purple stripe beneath the label.
+            let bezel = CGRect(x: frame.maxX + 2 * scale, y: frame.minY, width: 2 * scale, height: frame.height)
+            return [BrandingPatch(frame: frame, sample: bezel),
+                    BrandingPatch(frame: symbol, sample: symbol.offsetBy(dx: -symbol.width - 5 * scale, dy: 0), compact: true)]
+        }
+        guard tablet, !landscape || split else { return [] }
+        if core == "com.delta.nes.standard" {
+            let scale = size.height / 355
+            let frame = CGRect(x: size.width - 200 * scale, y: 83 * scale, width: 116 * scale, height: 29 * scale)
+            return [BrandingPatch(frame: frame,
+                                  sample: CGRect(x: frame.minX - 85 * scale, y: frame.minY, width: 70 * scale, height: frame.height),
+                                  color: UIColor(red: 0.8, green: 0, blue: 0, alpha: 1))]
+        }
+        let scale = size.height / 429
+        let frame: CGRect
+        switch core {
+        case "com.delta.gba.standard", "com.delta.gbc.standard", "com.delta.snes.standard":
+            frame = CGRect(x: size.width/2 - 112 * scale, y: 75 * scale, width: 224 * scale, height: 51 * scale)
+        case "com.delta.genesis.standard":
+            frame = CGRect(x: size.width/2 - 100 * scale, y: 190 * scale, width: 200 * scale, height: 50 * scale)
+        default: return [] // N64's iPad casing has no Delta mark.
+        }
+        return [BrandingPatch(frame: frame,
+                              sample: CGRect(x: frame.minX - 72 * scale, y: frame.minY, width: 60 * scale, height: frame.height),
+                              color: core == "com.delta.snes.standard" ? .darkGray : .white)]
     }
     /// Measured in the official 320-point-wide portrait PDFs, not gameplay space.
     /// Keep the original top strip and all native item/hit rectangles unchanged.
@@ -189,15 +284,19 @@ final class BoundStockControllerSkin: ControllerSkinProtocol {
     func drawPortraitWordmark(in context: CGContext, size: CGSize,
                               traits: DeltaCore.ControllerSkin.Traits, color: UIColor? = nil) {
         guard let frame = portraitWordmarkFrame(size: size, traits: traits) else { return }
+        drawWordmark(in: context, frame: CGRect(x: frame.minX, y: frame.minY, width: frame.width, height: 10 * size.width / 320),
+                     color: color ?? (base.identifier == "com.delta.nes.standard" ? .black : .white))
+    }
+    private func drawWordmark(in context: CGContext, frame: CGRect, color: UIColor) {
         let path = Self.portraitWordmark
         let ink = path.boundingBoxOfPath
-        let scale = min(frame.width / ink.width, (10 * size.width / 320) / ink.height)
+        let scale = min(frame.width / ink.width, frame.height / ink.height)
         context.saveGState()
         context.translateBy(x: frame.midX - ink.width * scale / 2, y: frame.minY + ink.height * scale)
         context.scaleBy(x: scale, y: -scale)
         context.translateBy(x: -ink.minX, y: -ink.minY)
         context.addPath(path)
-        context.setFillColor((color ?? (base.identifier == "com.delta.nes.standard" ? .black : .white)).cgColor)
+        context.setFillColor(color.cgColor)
         context.fillPath()
         context.restoreGState()
     }

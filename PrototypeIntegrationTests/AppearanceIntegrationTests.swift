@@ -6,6 +6,101 @@ import ZIPFoundation
 @testable import Delta
 
 @MainActor final class AppearanceIntegrationTests: XCTestCase {
+    func testIPadAndLandscapeBrandingPreservesNativeControlPixelsAndGeometry() throws {
+        for system in [System.gba, .gbc, .snes, .nes, .n64, .genesis, .ds] {
+            // Genesis is bundled but not registered by the Release app. Inspect
+            // its shipped artwork without enabling a core or changing settings.
+            let file = try XCTUnwrap(system.deltaCore.resourceBundle.url(forResource: "Standard", withExtension: "deltaskin"))
+            let native = try XCTUnwrap(DeltaCore.ControllerSkin(fileURL: file))
+            var cases = [DeltaCore.ControllerSkin.Traits]()
+            for display in [DeltaCore.ControllerSkin.DisplayType.standard, .splitView] {
+                for orientation in [DeltaCore.ControllerSkin.Orientation.portrait, .landscape] {
+                    cases.append(.init(device: .ipad, displayType: display, orientation: orientation))
+                }
+            }
+            if system == .gbc || system == .ds {
+                for display in [DeltaCore.ControllerSkin.DisplayType.standard, .edgeToEdge] {
+                    cases.append(.init(device: .iphone, displayType: display, orientation: .landscape))
+                }
+            }
+            for traits in cases {
+                let aspect = try XCTUnwrap(native.aspectRatio(for: traits))
+                let size = CGSize(width: 768, height: 768 * aspect.height / aspect.width)
+                let skin = BoundStockControllerSkin(base: native, canvasSize: size)
+                let original = try XCTUnwrap(native.items(for: traits))
+                let revised = try XCTUnwrap(skin.items(for: traits))
+                if native.isTranslucent(for: traits) != true {
+                    XCTAssertEqual(revised.map(\.frame), original.map(\.frame), "Opaque casings keep every native control, including Menu")
+                    XCTAssertEqual(revised.map(\.extendedFrame), original.map(\.extendedFrame))
+                }
+                let gameplay = original.filter { !$0.inputs.allInputs.contains { $0.stringValue == "menu" } }
+                for control in gameplay {
+                    let actual = try XCTUnwrap(revised.first { $0.id == control.id })
+                    XCTAssertEqual(actual.frame, control.frame)
+                    XCTAssertEqual(actual.extendedFrame, control.extendedFrame)
+                    XCTAssertEqual(actual.inputs.allInputs.map(\.stringValue), control.inputs.allInputs.map(\.stringValue))
+                }
+                XCTAssertEqual(skin.screens(for: traits)?.map(\.outputFrame), native.screens(for: traits)?.map(\.outputFrame))
+                let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                func render(_ image: UIImage) -> UIImage {
+                    UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+                }
+                func pixels(_ image: UIImage) throws -> [UInt8] {
+                    let cg = try XCTUnwrap(image.cgImage)
+                    var bytes = [UInt8](repeating: 0, count: cg.width * cg.height * 4)
+                    try bytes.withUnsafeMutableBytes { buffer in
+                        let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: cg.width, height: cg.height,
+                            bitsPerComponent: 8, bytesPerRow: cg.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                        context.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+                    }
+                    return bytes
+                }
+                for pressed in [false, true] {
+                    let source = pressed ? native.pressedImage(for: traits, preferredSize: .small) : native.image(for: traits, preferredSize: .small)
+                    guard let source else { continue }
+                    let result = try XCTUnwrap(pressed ? skin.pressedImage(for: traits, preferredSize: .small) : skin.image(for: traits, preferredSize: .small))
+                    // Use the same UIKit compositing scale on both sides so the
+                    // comparison measures artwork, not PDF/raster resampling.
+                    let baseline = UIGraphicsImageRenderer(size: source.size).image { _ in source.draw(at: .zero) }
+                    let before = try pixels(render(baseline)), afterImage = render(result), after = try pixels(afterImage)
+                    let patches = skin.supplementalBrandingPatches(size: size, traits: traits)
+                    for patch in patches {
+                        XCTAssertTrue(CGRect(origin: .zero, size: size).contains(patch.frame))
+                        XCTAssertTrue(CGRect(origin: .zero, size: size).contains(patch.sample))
+                        // DS Split View has a virtual touch-screen input spanning
+                        // the lower half; it has no printed control artwork.
+                        for control in gameplay where control.kind != .touchScreen {
+                            XCTAssertFalse(patch.frame.intersects(control.frame.applying(.init(scaleX: size.width, y: size.height))),
+                                           "Branding must not paint over a native control: \(system) \(traits) \(control.inputs.allInputs)")
+                        }
+                    }
+                    var excluded = patches.map { $0.frame.insetBy(dx: -2, dy: -2) }
+                    // Menu relocation predates this repair and is verified separately.
+                    for item in original + revised where item.inputs.allInputs.contains(where: { $0.stringValue == "menu" }) {
+                        excluded.append(item.frame.applying(.init(scaleX: size.width, y: size.height)).insetBy(dx: -5, dy: -5))
+                    }
+                    var changedInk = 0, changedElsewhere = 0
+                    for y in 0..<Int(size.height) {
+                        for x in 0..<Int(size.width) {
+                            let offset = (y * Int(size.width) + x) * 4
+                            guard (0..<4).contains(where: { abs(Int(before[offset+$0])-Int(after[offset+$0])) > 8 }) else { continue }
+                            let point = CGPoint(x: x, y: y)
+                            if patches.contains(where: { $0.frame.contains(point) }) { changedInk += 1 }
+                            else if !excluded.contains(where: { $0.contains(point) }) { changedElsewhere += 1 }
+                        }
+                    }
+                    XCTAssertEqual(changedElsewhere, 0, "Only branding and the existing Menu relocation may change: \(system) \(traits)")
+                    if !patches.isEmpty { XCTAssertGreaterThan(changedInk, 20) }
+                    if !pressed {
+                        let attachment = XCTAttachment(image: afterImage)
+                        attachment.name = "Bound-branding-\(system)-\(traits.device)-\(traits.displayType)-\(traits.orientation)"
+                        attachment.lifetime = .keepAlways; add(attachment)
+                    }
+                }
+            }
+        }
+    }
     func testPortraitWordmarkPreservesRenderedStockShouldersAndCasingStrip() throws {
         let native = try XCTUnwrap(DeltaCore.ControllerSkin.standardControllerSkin(for: System.gba.gameType))
         for (width, display) in [(375.0, DeltaCore.ControllerSkin.DisplayType.standard), (430.0, .edgeToEdge)] {
