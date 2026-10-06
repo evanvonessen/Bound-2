@@ -1,6 +1,6 @@
 # Bound TestFlight preparation
 
-Review date: 2026-10-06. **Local archive preparation is not TestFlight or distribution approval.** Upload, app-record creation, signing-account changes, agreements, and tester distribution remain on hold.
+Review date: 2026-10-06. The user authorized preparation and TestFlight upload to the existing Bound record (Apple ID 6815926598, SKU bound-ios), using existing signing assets. Final submission remains with the user. New credentials, profiles, agreements, and unsupported attestations are not authorized.
 
 ## Identity
 
@@ -9,14 +9,24 @@ Review date: 2026-10-06. **Local archive preparation is not TestFlight or distri
 | iPhone display label | Bound (explicitly authorized change from Bound 2) |
 | Project / scheme / product | Bound.xcodeproj / Bound / Bound.app |
 | Internal target / module | Delta (preserved for upstream compatibility) |
-| Bundle ID | com.evanvonessen.bound.deltaprototype |
+| Bundle ID | com.evanvonessen.bound (approved permanent release identity) |
 | Existing team | 3N83BX5M9G |
-| Version / build | 0.5.5 / 172 |
+| Version / build | 1.0 / 173 (matches the existing App Store Connect 1.0 version) |
 | Deployment target | iOS 17.0; iPhone and iPad |
 
-No bundle ID, team, project name, version, capabilities, or dependency pins were changed. The display label does not select an App Store name or reserve one. Before an upload, inspect the existing App Store Connect record and uploaded build numbers. Decide whether the current bundle ID is the permanent release identity; changing it creates a different app identity and does not automatically migrate existing local app data. Do not substitute the older `com.evanvonessen.bound` identity merely because a development profile exists for it.
+The bundle ID and version now match the explicitly approved existing App Store Connect record, which showed no builds during preparation. Team, module/core identities, capabilities, and dependency pins remain unchanged. This is a different installation identity from the prototype: local ROMs, saves, notes, preferences, and the bundle-scoped friend-account Keychain session are not automatically migrated. Friend sign-in restores server-side friend connections, not local game progress. Export saves from the old app and verify their import before removing it. The current Bound settings hide upstream Delta Sync; its inherited implementation is not a verified backup path for this release.
 
-## Local preparation and verification
+## Approved release identity verification
+
+The 1.0 (173) archive uses `com.evanvonessen.bound` and the pre-existing development profile `2eb68dbb-7f56-4a34-bd8d-32099e5b218a` (expires 2027-09-25). Its embedded profile matches the cached file byte-for-byte. App deep/strict signature verification, all 19 embedded framework signature checks, binary/dSYM UUID matching, the 16,879-file pinned-source check, and the 99-hash/two-manifest privacy check pass. The Release executable has no checked diagnostic, fixture, or XCTest workaround strings, and the archive contains no loose ROM/save files. This is development signing (`get-task-allow=true`), not an uploadable distribution export.
+
+Native upgrade testing reproduced a blank window when iOS restored an unnamed scene from an earlier SwiftUI Bound installation. The release restores that scene's native main window using public UIKit APIs. Named native scenes and external-display scenes retain their existing paths. The same simulator installation reopened its native library after the repair; no app uninstall, container clearing, or game-data migration was performed. Changing from the prototype bundle ID is a separate installation; an older app already using the approved release ID is an in-place update and needs its own save backup before updating.
+
+Manual backup in this build: save in-game, return to the library, long-press the game, then choose **Manage Save File → Export Save File**. Save the exported copy through Files. Import the matching game in the destination app, then use **Manage Save File → Import Save File**; importing replaces its current in-game save. **View Save States** also exposes Import/Export in each state's context menu. Notes and layout preferences are local; friend login does not back them up. Neither the current SwiftUI settings form nor the older settings controller exposes cloud-sync setup.
+
+Current local evidence is under ignored `.build/verification/release-identity/`. The actual Files-picker cancel/retry/import test passed, followed by both Release UI tests (zero failures): library/settings/license checks, playback, Menu/B, Notes/Types, rotation, and three original-cartridge screenshots. Xcode 27 missed animation-idle notifications on both simulator runtimes, so the final run opted into runner-only explicit waits; app animations and the Release executable were unchanged. Screenshot provenance records the original fixture and untouched native attachments. Physical-device behavior and live friend transport were not revalidated. No new signing assets, agreement acceptance, final submission, or live-account validation is included.
+
+## Earlier prototype preparation and verification
 
 The ordinary Bound scheme archives its native app in Release. The local archive uses Xcode 27.0 (27A266a), iOS 27.0 SDK, arm64, and the existing Apple Development identity. Existing Apple Development and Apple Distribution certificates were inspected read-only. Only development provisioning profiles are cached; no matching App Store distribution profile was found. No provisioning updates or new signing assets were requested.
 
@@ -40,9 +50,9 @@ The [source audit and provenance](PrivacyManifests/README.md) cover two narrow b
 
 ## Remaining blockers
 
-1. **Distribution rights:** The recorded Agora proprietary binary SDK versus Delta AGPL compatibility question remains unresolved. Standalone core/framework permission provenance, OperatorKit, and the supplied type-chart artwork also remain open in [the dependency inventory](LICENSES/DEPENDENCY-INVENTORY.md). Agora remains unchanged. Do not distribute this archive until the required permissions are resolved.
+1. **Distribution rights:** The recorded Agora proprietary binary SDK versus Delta AGPL compatibility question remains unresolved. Standalone core/framework permission provenance, OperatorKit, and the supplied type-chart artwork also remain open in [the dependency inventory](LICENSES/DEPENDENCY-INVENTORY.md). Agora remains unchanged. The user has authorized TestFlight upload; that authorization does not resolve or attest to these third-party permissions.
 2. **SDK privacy coverage:** The linked app still contains Alamofire 4.7.3, GoogleSignIn 6.2.4, GTMAppAuth 1.3.1, and GTMSessionFetcher 2.3.0 without corresponding bundled privacy manifests. All four appear on Apple's required-SDK list. SDWebImage 3.8.3 now has a locally source-audited required-reason API manifest in its own resource bundle; this is not a complete SDK collection/tracking attestation. The archive does include manifests for AppAuth, RevenueCat, ZIPFoundation, and AgoraRtcKit. Review the required-reason API usage of each embedded core/framework too. Preserve the pinned sources until a reviewed dependency update or accurately supported manifest integration is authorized; do not invent SDK declarations.
-3. **Apple account state and provisioning:** An App Store Connect record, membership/agreements state, app access, and previous uploaded build numbers have not been verified. This execution session exposes no App Store Connect connector, browser-control tool, plugin discovery action, or configured `asc` CLI. A development-signed archive is not an App Store distribution package. Confirm the intended existing record and permanent bundle ID before obtaining a matching distribution profile or creating a record.
+3. **Distribution provisioning:** The Apple account owner verified the existing Bound record (6815926598), bundle ID `com.evanvonessen.bound`, version 1.0, and no uploaded builds. The local machine has an existing Apple Distribution identity, but only development profiles are installed. A matching App Store distribution profile is still required for an uploadable export. No automatic export or provisioning updates have been requested; no signing assets were created.
 4. **Submission information:** Review the privacy policy and disclosures for account identity, friend relationships, gameplay video, backend retention, and SDK diagnostics. Confirm export-compliance answers, applicable age-rating responses, beta description, feedback/review contact, and reviewer access using authorized test data. Internal versus external tester scope and any submission must be explicitly approved. External testing may require beta review.
 
 The binary import audit also found missing per-framework manifest coverage for file-metadata APIs in Agoraffmpeg and GBADeltaCore; file-metadata/defaults APIs in MelonDSDeltaCore; file-metadata/boot-time APIs in N64DeltaCore and aosl; and defaults APIs in OperatorKit. Imports identify review targets; correct reasons still require source or vendor evidence. No vendor declarations were fabricated. DeltaCore now includes a locally audited boot-time declaration through a project-only resource packaging patch; its upstream revision and runtime source remain unchanged.
@@ -53,7 +63,7 @@ Removed the hardcoded `ALTDeviceID` from the app Info.plist. This was a device-s
 
 An independent unsigned archive succeeded from an isolated checkout based on `986ed021` with this cleanup, using Xcode 27.0 / iOS 27.0. The app and all 19 embedded frameworks are arm64, the app's dSYM UUID matches, the primary icon metadata is present, and the app manifest matches source. The SDK verifier passed all 99 source/integration hashes and both locally audited manifests in source and archive. All 47 model tests and 16,879 pinned-source checks passed. No `ALTDeviceID`, loose ROM/save files, provisioning profile, or private signing-key files were found in the resulting app. Checked QA launch-argument strings were absent from its Release executable. Physical-device and live-network behavior were not revalidated for this plist-only change.
 
-Evidence is under ignored `.build/readiness/` (`archive-final.log`, `archive-audit.json`, `models-latest.log`, `sources-latest.log`), with the local artifact at `.build/Bound-readiness-final.xcarchive`. The archive command below can also be run with `CODE_SIGNING_ALLOWED=NO` to avoid using any signing identity. An unsigned archive is engineering evidence only and cannot be uploaded as a TestFlight distribution package. App Store Connect record identity and uploaded build numbers still require read-only account verification before choosing the permanent release bundle ID or next build number.
+Evidence is under ignored `.build/readiness/` (`archive-final.log`, `archive-audit.json`, `models-latest.log`, `sources-latest.log`), with the local artifact at `.build/Bound-readiness-final.xcarchive`. The archive command below can also be run with `CODE_SIGNING_ALLOWED=NO` to avoid using any signing identity. An unsigned archive is engineering evidence only and cannot be uploaded as a TestFlight distribution package. The approved release identity section above supersedes this earlier prototype identity review.
 
 ## Local archive command
 

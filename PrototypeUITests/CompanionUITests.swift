@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import ObjectiveC
 
 private func selectCompanion(_ name: String, in app: XCUIApplication) {
     let cycle = app.buttons["bound.panel-cycle"]
@@ -1136,9 +1137,16 @@ final class FileImportUITests: XCTestCase {
         app.buttons["Browse"].firstMatch.tap()
         let local = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "On My iPhone")).firstMatch
         XCTAssertTrue(local.waitForExistence(timeout: 15)); local.tap()
-        let bound = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@", "Delta Bound", "Bound 2")).firstMatch
-        XCTAssertTrue(bound.waitForExistence(timeout: 15)); bound.tap()
+        let bound = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@", "Delta Bound", "Bound"))
+        XCTAssertTrue(bound.firstMatch.waitForExistence(timeout: 15))
         let folder = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "PickerImportQA")).firstMatch
+        // Prototype and release identities can both be installed with the Bound
+        // display name. Open the provider containing our staged test cartridge.
+        for index in 0..<bound.count {
+            bound.element(boundBy: index).tap()
+            if folder.waitForExistence(timeout: 3) { break }
+            app.navigationBars.buttons.firstMatch.tap()
+        }
         XCTAssertTrue(folder.waitForExistence(timeout: 15)); folder.tap()
         let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", "BoundPickerDiagnostic")).firstMatch
         XCTAssertTrue(file.waitForExistence(timeout: 15))
@@ -1159,6 +1167,68 @@ final class FileImportUITests: XCTestCase {
 }
 
 final class ReleaseSmokeUITests: XCTestCase {
+    override func setUpWithError() throws {
+        // Xcode 27 can miss animation-idle notifications from the native pause
+        // menu indefinitely. This opt-in affects only XCTest's runner, never
+        // the app: assertions below wait for actual elements and orientation.
+        guard ProcessInfo.processInfo.environment["BOUND_UI_EXPLICIT_WAITS"] == "1" else { return }
+        let process = try XCTUnwrap(NSClassFromString("XCUIApplicationProcess"))
+        for name in ["shouldSkipPreEventQuiescence", "shouldSkipPostEventQuiescence"] {
+            let method = try XCTUnwrap(class_getInstanceMethod(process, NSSelectorFromString(name)))
+            let skip: @convention(block) (AnyObject) -> Bool = { _ in true }
+            method_setImplementation(method, imp_implementationWithBlock(skip))
+        }
+    }
+
+    func testReleaseScreenshotsWithOriginalDiagnosticCartridge() throws {
+        #if DEBUG
+        throw XCTSkip("Capture the shipping Release interface.")
+        #else
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launch()
+        let search = app.searchFields["Search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
+        search.tap(); search.typeText("BoundPickerDiagnostic")
+        let game = app.collectionViews.cells.containing(.staticText, identifier: "BoundPickerDiagnostic").firstMatch
+        XCTAssertTrue(game.waitForExistence(timeout: 10)); game.tap()
+        XCTAssertTrue(app.buttons["bound.panel-cycle"].waitForExistence(timeout: 15))
+        openBoundSettings(in: app)
+        let layout = app.descendants(matching: .any).matching(identifier: "bound.screen-layout").firstMatch
+        XCTAssertTrue(layout.waitForExistence(timeout: 5)); layout.tap()
+        app.buttons["Bound"].firstMatch.tap()
+        closeBoundSheet(in: app)
+        selectCompanion("Notes", in: app)
+        XCTAssertTrue(app.textViews["bound.notes-editor"].waitForExistence(timeout: 10))
+        func capture(_ name: String) {
+            // Let the shipping animation finish; the runner's notification
+            // workaround above does not disable or accelerate app animations.
+            Thread.sleep(forTimeInterval: 1)
+            let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            attachment.name = name
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        capture("Release-01-portrait-notes")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.frame.width > app.frame.height
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 10), .completed)
+        XCTAssertTrue(app.buttons["bound.panel-cycle"].isHittable)
+        capture("Release-02-landscape-notes")
+        openNativePause(in: app)
+        XCTAssertTrue(app.buttons["Bound Settings"].isHittable)
+        resumeNativePause(in: app)
+        XCUIDevice.shared.orientation = .portrait
+        openBoundSettings(in: app)
+        XCTAssertTrue(layout.waitForExistence(timeout: 10))
+        capture("Release-03-settings")
+        #endif
+    }
+
     func testReleaseLibrarySettingsAndPlaybackHaveNoDevelopmentUI() throws {
         #if DEBUG
         throw XCTSkip("Run this smoke case with -configuration Release.")

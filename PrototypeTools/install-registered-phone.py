@@ -29,7 +29,7 @@ def main():
         if certificate not in profile.get('DeveloperCertificates',[]): raise ValueError('Signer certificate not in profile')
         prefix=profile['ApplicationIdentifierPrefix'][0]
         expected=prefix+'.'+info['CFBundleIdentifier']
-        if info['CFBundleIdentifier']!='com.evanvonessen.bound.deltaprototype': raise ValueError('Wrong app identifier')
+        if info['CFBundleIdentifier']!='com.evanvonessen.bound': raise ValueError('Wrong app identifier')
         if not fnmatch.fnmatchcase(expected,profile['Entitlements']['application-identifier']): raise ValueError('Profile does not cover app')
         if signed.get('application-identifier')!=expected or signed.get('com.apple.developer.team-identifier')!=profile['TeamIdentifier'][0]: raise ValueError('Entitlements mismatch')
         if profile['ExpirationDate']<=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None): raise ValueError('Profile expired')

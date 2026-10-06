@@ -61,6 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate
         
         NotificationCenter.default.addObserver(self, selector: #selector(AppDelegate.databaseManagerDidStart(_:)), name: DatabaseManager.didStartNotification, object: DatabaseManager.shared)
         NotificationCenter.default.addObserver(self, selector: #selector(AppDelegate.settingsDidChange(_:)), name: Settings.didChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(AppDelegate.restoreLegacyMainScene(_:)), name: UIScene.willConnectNotification, object: nil)
         
         // Deep Links
         if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem
@@ -149,6 +150,21 @@ extension AppDelegate
 
 private extension AppDelegate
 {
+    @objc func restoreLegacyMainScene(_ notification: Notification)
+    {
+        // Earlier Bound builds used an unnamed SwiftUI scene. UIKit restores
+        // that saved configuration across app updates instead of consulting
+        // our named Main configuration, leaving the native app without a window.
+        guard let scene = notification.object as? UIWindowScene,
+              scene.session.role == .windowApplication,
+              scene.session.configuration.name == nil,
+              !(scene.delegate is SceneDelegate) else { return }
+
+        let delegate = SceneDelegate()
+        scene.delegate = delegate
+        delegate.restoreMainWindow(in: scene)
+    }
+
     func registerCores()
     {
         #if LITE

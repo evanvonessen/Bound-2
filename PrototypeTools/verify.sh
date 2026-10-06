@@ -20,10 +20,10 @@ common=(-project Bound.xcodeproj -configuration Debug -destination "platform=iOS
 # This suite injects offline transport. It never constructs a live RTC engine.
 xcodebuild "${common[@]}" -scheme BoundIntegrationQA test > "$logs/integration.log" 2>&1
 python3 PrototypeTools/generate_diagnostic.py .build/fixtures/BoundDiagnostic.gba > "$logs/fixture.log"
-xcrun simctl launch "$QA_SIMULATOR_ID" com.evanvonessen.bound.deltaprototype > /dev/null
+xcrun simctl launch "$QA_SIMULATOR_ID" com.evanvonessen.bound > /dev/null
 xcrun simctl openurl "$QA_SIMULATOR_ID" "file://$(pwd)/.build/fixtures/BoundDiagnostic.gba"
 # Stage a distinct original cartridge for the real Files picker (not openURL).
-container="$(xcrun simctl get_app_container "$QA_SIMULATOR_ID" com.evanvonessen.bound.deltaprototype data)"
+container="$(xcrun simctl get_app_container "$QA_SIMULATOR_ID" com.evanvonessen.bound data)"
 mkdir -p "$container/Documents/PickerImportQA"
 python3 - "$container/Documents/PickerImportQA/BoundPickerDiagnostic.gba" <<'FIXTURE'
 import sys

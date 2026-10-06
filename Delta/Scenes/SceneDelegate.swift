@@ -43,17 +43,30 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate
     
     private lazy var deepLinkController = DeepLinkController(window: self.window)
     private var launchViewController: LaunchViewController!
+
+    /// Rebuild only the window for an unnamed scene retained from the old app.
+    /// The database, ROMs, saves, notes, preferences, and Keychain are untouched.
+    func restoreMainWindow(in scene: UIWindowScene)
+    {
+        let window = GameWindow(windowScene: scene)
+        window.rootViewController = UIStoryboard(name: "Main", bundle: nil).instantiateInitialViewController()
+        self.window = window
+        self.configureMainWindow(in: scene)
+    }
+
+    private func configureMainWindow(in scene: UIScene)
+    {
+        scene.activationConditions.prefersToActivateForTargetContentIdentifierPredicate = NSPredicate(value: true)
+        self.window?.tintColor = .deltaPurple
+        self.launchViewController = self.window?.rootViewController as? LaunchViewController
+        self.window?.makeKeyAndVisible()
+    }
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions)
     {
         // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
         // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
         // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        
-        // Become default scene handler for Handoff/other deep links.
-        scene.activationConditions.prefersToActivateForTargetContentIdentifierPredicate = NSPredicate(value: true)
-        
-        self.window?.tintColor = .deltaPurple
         
         if let context = connectionOptions.urlContexts.first
         {
@@ -65,10 +78,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate
             self.handle(.shortcut(shortcutItem))
         }
         
-        let launchViewController = self.window?.rootViewController as! LaunchViewController
-        self.launchViewController = launchViewController
-        
-        self.window?.makeKeyAndVisible()
+        self.configureMainWindow(in: scene)
     }
     
     func sceneDidDisconnect(_ scene: UIScene)
