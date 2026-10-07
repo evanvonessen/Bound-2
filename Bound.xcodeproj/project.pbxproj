@@ -1262,6 +1262,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6E69A24F7B89458FA8D73419 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				08A3881C9C54F3B61495AE6E /* libAlamofire.a */,
+				749A26BC073FE2A0CA0A8B84 /* libAppAuth.a */,
+				2B3007682CB3025BA08E81D5 /* AppAuthCore_Privacy.bundle */,
+				926A5280DD5856C5BE4AB2B2 /* libGoogleAPIClientForREST.a */,
+				906D257CDF95D7A67C969AFB /* libGoogleSignIn.a */,
+				240BAB5B159229258B2E3A8A /* GoogleSignIn.bundle */,
+				2C6B622C6845748D0AE0633A /* libGTMAppAuth.a */,
+				7E57B0DA04819D1829496614 /* libGTMSessionFetcher.a */,
+				A5552D419E2676406BA74DD2 /* libHarmony.a */,
+				FC62FB9DE11D58AD91A3FA57 /* libPods-Delta.a */,
+				87DF7F2DA14C6ADC043EC46F /* libPods-DeltaPreviews.a */,
+				9156DDD5378B1A2797E0D624 /* libRoxas.a */,
+				257682BD87E0E5182F6C4CC3 /* libSDWebImage.a */,
+				8AF19F61B4EBFD9C8BE9FFA2 /* libSMCalloutView.a */,
+				B27ABACD90AC806C13238212 /* libSQLite.swift.a */,
+				3D8FEF2487DDC04D795C8A5D /* libSwiftyDropbox.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		11F7EF970F3EE7DAA5EE0DC8 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -1887,22 +1910,6 @@
 				D539102F29E88B6B0006B350 /* DeltaPreviews.framework */,
 				16CBEF16073EB51BA5AD5C81 /* BoundCompanionUITests.xctest */,
 				5F9998CBE2E786763A4C01D7 /* BoundIntegrationTests.xctest */,
-				08A3881C9C54F3B61495AE6E /* libAlamofire.a */,
-				749A26BC073FE2A0CA0A8B84 /* libAppAuth.a */,
-				2B3007682CB3025BA08E81D5 /* AppAuthCore_Privacy.bundle */,
-				926A5280DD5856C5BE4AB2B2 /* libGoogleAPIClientForREST.a */,
-				906D257CDF95D7A67C969AFB /* libGoogleSignIn.a */,
-				240BAB5B159229258B2E3A8A /* GoogleSignIn.bundle */,
-				2C6B622C6845748D0AE0633A /* libGTMAppAuth.a */,
-				7E57B0DA04819D1829496614 /* libGTMSessionFetcher.a */,
-				A5552D419E2676406BA74DD2 /* libHarmony.a */,
-				FC62FB9DE11D58AD91A3FA57 /* libPods-Delta.a */,
-				87DF7F2DA14C6ADC043EC46F /* libPods-DeltaPreviews.a */,
-				9156DDD5378B1A2797E0D624 /* libRoxas.a */,
-				257682BD87E0E5182F6C4CC3 /* libSDWebImage.a */,
-				8AF19F61B4EBFD9C8BE9FFA2 /* libSMCalloutView.a */,
-				B27ABACD90AC806C13238212 /* libSQLite.swift.a */,
-				3D8FEF2487DDC04D795C8A5D /* libSwiftyDropbox.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2588,7 +2595,7 @@
 					ProjectRef = D57A81B92E29AE19006E06E8 /* SNESDeltaCore.xcodeproj */;
 				},
 				{
-					ProductGroup = BFFA71D81AAC406100EE9DD1 /* Products */;
+					ProductGroup = 6E69A24F7B89458FA8D73419 /* Products */;
 					ProjectRef = 751F96B480057ACEB1A081FD /* Pods.xcodeproj */;
 				},
 			);
