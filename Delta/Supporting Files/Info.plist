@@ -205,6 +205,9 @@
 	<array>
 		<string>_altserver._tcp</string>
 	</array>
+	<!-- Agora includes camera APIs, but Bound publishes only custom gameplay frames. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Bound does not use your camera. Sharing with friends sends gameplay video only.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Delta uses the local network to communicate with AltServer, enable JIT, and connect to Epilogue Operator devices.</string>
 	<key>NSMicrophoneUsageDescription</key>
