@@ -65,6 +65,11 @@ Ignored logs: `.build/account-validation/final-models.log`, `final-server.log`,
    invocation remain unexplained. No retry, permission change or alternate
    mutation route was used. See `Backend/moderation/README.md` for evidence and
    the bounded recovery path. New email intents/report/block are not live yet.
+   Read-only Safari inspection confirms dashboard and existing function editor
+   access without an access-denied message; it does not resolve connector write
+   confirmation. The overview reports **Unhealthy**, whose cause is unverified.
+   A guarded user-run SQL handoff and exact two-function update/verification
+   sequence are in the moderation README. No browser deployment was performed.
 2. **New icon and four artwork files: HTTP 403.** All five new Library references
    were tried through supported VM materialization and stopped at denial.
    No supplied pixels could be inspected or added to GitHub. Existing icon and

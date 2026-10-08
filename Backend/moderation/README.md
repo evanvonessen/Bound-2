@@ -35,6 +35,73 @@ this recovery. A future resume needs the normal integration confirmation flow
 to work once; if it repeats, stop and report the integration fault rather than
 repeatedly invoking the mutation or broadening persistent permissions.
 
+### User-run handoff if the connector remains blocked
+
+Read-only Safari inspection reached the authenticated Bound production project
+and both existing functions. The delete-account Code page exposes `index.ts`,
+`handler.mjs`, Add File and Deploy updates. No access-denied message appeared.
+This verifies dashboard access, not the cause or resolution of the connector's
+confirmation loop. The project overview displayed **Unhealthy**; inspect its
+service health before deployment and stop if database/function service errors
+prevent verification. No editor content, permissions or live resources were changed.
+
+`approved-deployment.sql` combines the same three reviewed files into one
+transaction with the original live-definition fingerprint guard. It openly
+includes future deletion, blocking and suspension behavior; this is not a
+rewritten tool attempt. No agent has executed this handoff against Supabase.
+
+If the user chooses to execute it themselves, open the existing authorized
+[Bound SQL Editor](https://supabase.com/dashboard/project/qevnxhngdtlyihhmvnjv/sql/new),
+verify the project reference in the address bar, paste the complete file, review
+its exact statements and click Run once. A baseline-change error means stop and
+inspect; never remove the guard to force execution. Retain the query and result.
+SQL Editor execution does not create the connector's migration-history entry;
+record this file for later reconciliation through the normal migration workflow.
+Do not silently run it through another connector, CLI or browser automation.
+
+SQL alone is not the complete deployment. Next update only the two existing
+Edge Functions from the reviewed files below using the normal supported function
+deployment flow and existing environment configuration. No credentials need to
+be copied or entered into source. Until both functions and verification are
+complete, keep backend status pending. `verify-deployment.sql` reads only schema,
+RLS, privileges and function definitions; run it after deployment. Check Edge
+Function versions/source through the supported read integration, then verify
+unauthenticated rejection. Real report/deletion tests remain excluded.
+
+Exact user sequence after choosing this handoff:
+
+1. In the Bound SQL Editor, run the entire `approved-deployment.sql` once.
+   Stop on any error; retain its result and leave the baseline guard intact.
+2. Open [delete-account → Code](https://supabase.com/dashboard/project/qevnxhngdtlyihhmvnjv/functions/delete-account/code).
+   Replace `index.ts` with `Backend/account-deletion/index.ts` and `handler.mjs`
+   with `Backend/account-deletion/handler.mjs`. Review both files, then use
+   **Deploy updates**. Keep the existing custom-auth configuration
+   (`verify_jwt=false`) and existing server environment; do not enter secrets.
+3. Open [agora-token → Code](https://supabase.com/dashboard/project/qevnxhngdtlyihhmvnjv/functions/agora-token/code).
+   Set `index.ts` to the contents of `Backend/moderation/agora-index.ts`, and
+   set/add `agora-handler.mjs` from the same directory. Retain that filename
+   because index.ts imports it. Review, then use **Deploy updates**, preserving
+   existing custom-auth configuration (`verify_jwt=false`) and environment.
+   Do not create a new function or change project access.
+4. Run `verify-deployment.sql` read-only. Its five private tables must have RLS
+   enabled, no anon/authenticated table/schema/helper access, and only the
+   documented public RPC grants. Compare function definitions with the reviewed
+   sources. Read both deployed Edge Function sources/versions: require updated
+   versions beyond deletion v2 and token v3, correct module files, and active status.
+5. Verify safe rejection without credentials, a real room, or a real operation:
+   POST JSON `{"roomID":"invalid"}` to `/functions/v1/agora-token` must reject
+   with 401, and POST JSON `{"confirmationEmail":"qa-invalid@example.invalid",`
+   `"operationToken":"0000000000000000000000000000000000000000000000000000000000000000"}`
+   to `/functions/v1/delete-account` must reject with 401. Use the verified
+   project's `https://qevnxhngdtlyihhmvnjv.supabase.co` origin and
+   `Content-Type: application/json`, no Authorization or Origin header.
+   Both are unauthenticated begin attempts and must never reach mutation.
+   A 503 or unexpected success means stop and inspect; do not weaken gates.
+
+These safe probes prove rejection only. Email delivery, authenticated enforcement,
+paired sharing and irreversible deletion need separate disposable-account/device
+QA. Do not describe the backend as verified until steps 1–5 succeed.
+
 ## Bounded security deployment
 
 1. Apply `proposed-schema.sql` then `proposed-friend-gates.sql`, and the email
