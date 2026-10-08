@@ -37,9 +37,11 @@ application. The following distinctions are intentional:
   `Delta/Syncing/SyncManager.swift`: inherited optional Google Drive/Dropbox sync
   can transfer game files, artwork, saves, and other library files. This is separate
   from Bound friend accounts and must not be described as local-only storage.
-- The current Bound account UI does not implement the old app's account-deletion
-  flow. The site offers the established support contact and does not promise a
-  nonexistent in-app flow or a fixed third-party retention period.
+- New source includes email/password account creation and email-confirmed account
+  deletion. The deletion backend email contract is prepared but not deployed;
+  reviewed build 1.0 (4) lacks this UI. See `Backend/account-deletion/README.md`
+  for deployment and replacement-build requirements. The public site has not
+  been changed and makes no premature in-app deletion promise.
 
 The static site has no scripts, forms, external fonts, or site-owned analytics.
 GitHub hosting and linked providers have their own privacy practices.

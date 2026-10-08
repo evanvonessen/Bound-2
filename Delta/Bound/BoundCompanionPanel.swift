@@ -654,15 +654,22 @@ private struct BoundFriendsSheet: View {
         NavigationStack {
             Form {
                 Section("Bound account") {
-                    if account.session == nil {
-                        TextField("Email", text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()
-                        SecureField("Password", text: $password)
+                    if account.deletionPending {
+                        Button("Retry account deletion", role: .destructive) {
+                            Task { await account.resumeAccountDeletion(); onboarding.synchronizeAccount() }
+                        }.disabled(account.busy)
+                    } else if account.session == nil {
+                        TextField("Email", text: $email).textContentType(.username).textInputAutocapitalization(.never).keyboardType(.emailAddress).autocorrectionDisabled()
+                        SecureField("Password", text: $password).textContentType(.password)
                         Button("Sign in") {
                             let entered = password; password = ""
                             Task { await account.signIn(email: email, password: entered); onboarding.synchronizeAccount() }
                         }.disabled(account.busy || email.isEmpty || password.isEmpty)
+                        NavigationLink("Create Account") {
+                            BoundCreateAccountView(account: account, signInEmail: $email) { onboarding.synchronizeAccount() }
+                        }.disabled(account.busy)
                     } else {
-                        Button("Sign out") { sharing.stop(); onboarding.signOut(); account.signOut() }
+                        Button("Sign out") { sharing.stop(); onboarding.signOut(); account.signOut() }.disabled(account.busy)
                     }
                     Text(account.status).font(.caption)
                 }
@@ -690,15 +697,108 @@ private struct BoundFriendsSheet: View {
                         Button("Accept invite") { onboarding.accept(code: invite, name: name); invite = "" }
                             .disabled(onboarding.busy || invite.count != 16 || name.isEmpty)
                     }
+                    Section {
+                        NavigationLink {
+                            BoundDeleteAccountView(account: account) { sharing.stop(); onboarding.signOut() }
+                        } label: {
+                            Text("DELETE MY ACCOUNT").foregroundStyle(.red)
+                        }.disabled(account.busy)
+                    }
                 }
             }.navigationTitle("Friends")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(account.busy) } }
         }
         .onAppear { onboarding.open(sharing: sharing, existing: { account.session }) }
         .onChange(of: scenePhase) { phase in
             if phase == .active { onboarding.open(sharing: sharing, existing: { account.session }) }
             else { onboarding.close() }
         }
-        .onDisappear { onboarding.close(); closed() }
+        .onDisappear { password = ""; onboarding.close(); closed() }
+        .interactiveDismissDisabled(account.busy)
+    }
+}
+
+struct BoundCreateAccountView: View {
+    @ObservedObject var account: BoundFriendAccount
+    @Binding var signInEmail: String
+    var signedIn: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
+    @State private var email = ""
+    @State private var password = ""
+    @State private var checkEmail = false
+    @State private var submission: Task<Void, Never>?
+    var body: some View {
+        Form {
+            if checkEmail {
+                Section {
+                    Text(account.status).accessibilityIdentifier("account.signup.result")
+                    Button("Back to Sign In") { dismiss() }
+                }
+            } else {
+                Section {
+                    TextField("Email", text: $email).textContentType(.username).keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("account.signup.email")
+                    SecureField("Password", text: $password).textContentType(.newPassword)
+                        .accessibilityIdentifier("account.signup.password")
+                }.disabled(account.busy)
+                Section {
+                    Button("Create Account") {
+                        let entered = password; password = ""
+                        signInEmail = email
+                        submission = Task { @MainActor in
+                            let result = await account.createAccount(email: email, password: entered)
+                            guard !Task.isCancelled else { return }
+                            if result == .signedIn { signedIn(); dismiss() }
+                            else if result == .checkEmail { checkEmail = true }
+                            submission = nil
+                        }
+                    }.disabled(account.busy || BoundFriendAccount.normalizedEmail(email) == nil || password.isEmpty)
+                        .accessibilityIdentifier("account.signup.submit")
+                    if account.busy { ProgressView("Creating account…") }
+                    Text(account.status).font(.caption)
+                }
+            }
+        }.navigationTitle("Create Account")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { submission?.cancel(); password = ""; dismiss() } } }
+            .onAppear { email = signInEmail }
+            .onDisappear { submission?.cancel(); submission = nil; password = "" }
+    }
+}
+
+struct BoundDeleteAccountView: View {
+    @ObservedObject var account: BoundFriendAccount
+    var stopSharing: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmationEmail = ""
+    var body: some View {
+        Form {
+            Section {
+                Text("Permanently deletes your Bound account, friends, and Bound cloud data. Local games and notes stay on this device.")
+                if account.deletionPending {
+                    Button("Retry account deletion", role: .destructive) { Task { await account.resumeAccountDeletion() } }
+                        .disabled(account.busy)
+                } else if account.session != nil {
+                    if let email = account.deletionEmail {
+                        Text("Type \(email) to confirm.").textSelection(.enabled)
+                        TextField("Account email", text: $confirmationEmail).keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .accessibilityIdentifier("account.deletion.email").disabled(account.busy)
+                        Button("DELETE MY ACCOUNT", role: .destructive) {
+                            stopSharing()
+                            Task { await account.deleteAccount(confirmationEmail: confirmationEmail) }
+                        }.disabled(account.busy || BoundFriendAccount.normalizedEmail(confirmationEmail) != email)
+                            .accessibilityIdentifier("account.deletion.submit")
+                    } else {
+                        Button("Verify account email") { Task { await account.loadDeletionIdentity() } }.disabled(account.busy)
+                    }
+                }
+                if account.busy { ProgressView("Please wait…") }
+                Text(account.status).font(.caption).accessibilityIdentifier("account.deletion.result")
+            }
+        }.navigationTitle("Delete Account")
+            .navigationBarBackButtonHidden(account.busy)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(account.session == nil ? "Done" : "Cancel") { dismiss() }.disabled(account.busy) } }
+            .task { await account.loadDeletionIdentity() }
+            .interactiveDismissDisabled(account.busy)
     }
 }
