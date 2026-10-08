@@ -9,6 +9,7 @@ Directory case is significant on the Linux deployment runner.
 - Marketing: `https://evanvonessen.github.io/bound/`
 - Support: `https://evanvonessen.github.io/bound/support.html`
 - Privacy: `https://evanvonessen.github.io/bound/privacy.html`
+- Community rules: `https://evanvonessen.github.io/bound/moderation.html`
 
 The website describes a development version and contains no download button or
 availability, price, or regional-release promise. The support address is the
@@ -40,8 +41,9 @@ application. The following distinctions are intentional:
 - New source includes email/password account creation and email-confirmed account
   deletion. The deletion backend email contract is prepared but not deployed;
   reviewed build 1.0 (4) lacks this UI. See `Backend/account-deletion/README.md`
-  for deployment and replacement-build requirements. The public site has not
-  been changed and makes no premature in-app deletion promise.
+  for deployment and replacement-build requirements. The public policy subpage describes the upcoming controls without claiming
+  they are available in reviewed build 1.0 (4). See `APP-REVIEW-SETUP.md` for
+  the draft reply and replacement-build/physical-recording requirements.
 
 The static site has no scripts, forms, external fonts, or site-owned analytics.
 GitHub hosting and linked providers have their own privacy practices.
