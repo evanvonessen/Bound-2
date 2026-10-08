@@ -26,6 +26,15 @@ to raw SQL or another route to bypass confirmation. Re-read state before any
 future approved retry, and retain the database-fingerprint precondition.
 The backend remains pending; do not advertise these controls as live.
 
+A read-only Plugin Management check confirmed Supabase inherits the default
+**Allow read actions** setting: reads do not prompt, writes require confirmation.
+This establishes why a write can prompt despite approval in conversation; it
+does not establish why one invocation repeatedly prompted. Permissions were
+not changed. The user instructed that the migration must not be reissued during
+this recovery. A future resume needs the normal integration confirmation flow
+to work once; if it repeats, stop and report the integration fault rather than
+repeatedly invoking the mutation or broadening persistent permissions.
+
 ## Bounded security deployment
 
 1. Apply `proposed-schema.sql` then `proposed-friend-gates.sql`, and the email
