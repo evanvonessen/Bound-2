@@ -36,9 +36,10 @@ struct SettingsView: View
             Form {
                 ControlsSection()
                 EmulationSection()
-                OnlineMultiplayerSection()
+                if !BoundFeatureVisibility.simplifiedSettings { OnlineMultiplayerSection() }
                 MiscellaneousSection()
-                CreditsSection()
+                if !BoundFeatureVisibility.simplifiedSettings { CreditsSection() }
+                Section { NavigationLink("Source and licenses") { BoundSourceAndLicenses() } }
             }
             .safeAreaPadding(.top, 8)
             .navigationTitle("Settings")
@@ -75,6 +76,8 @@ private struct ControlsSection: View
     @SwiftUI.State
     private var gameControllerManager: ExternalGameControllerManager = .shared
 
+    @SwiftUI.State private var opacity = Double(Settings.translucentControllerSkinOpacity)
+
     var body: some View {
         Section("Controls") {
             NavigationLink {
@@ -89,6 +92,7 @@ private struct ControlsSection: View
                 }
             }
 
+            if !BoundFeatureVisibility.simplifiedSettings {
             NavigationLink {
                 SkinSettingsView()
             } label: {
@@ -99,6 +103,14 @@ private struct ControlsSection: View
                 TouchHapticsView()
             } label: {
                 SettingsRow(label: Text("Touch & Haptics"), systemImage: "hand.tap", color: .red)
+            }
+            }
+            if BoundFeatureVisibility.simplifiedSettings {
+                VStack(alignment: .leading) {
+                    LabeledContent("Controller opacity", value: "\(Int(opacity * 100))%")
+                    Slider(value: $opacity, in: 0...1, step: 0.05)
+                        .onChange(of: opacity) { _, value in Settings.translucentControllerSkinOpacity = value }
+                }
             }
         }
     }
@@ -116,10 +128,12 @@ private struct EmulationSection: View
                 SettingsRow(label: Text("Audio"), systemImage: "speaker.wave.2", color: .green)
             }
 
+            if !BoundFeatureVisibility.simplifiedSettings {
             NavigationLink {
                 VideoSettingsView()
             } label: {
                 SettingsRow(label: Text("Video"), systemImage: "display", color: .teal)
+            }
             }
 
             NavigationLink {

@@ -188,7 +188,7 @@ final class BoundCompanionCoordinator {
     }
     func layout(in bounds: CGRect, safeArea: UIEdgeInsets, controllerSize: CGSize) -> CGRect? {
         guard let owner else { return nil }
-        let screenLayout = BoundAppearancePreferences().screenLayout
+        let screenLayout = BoundAppearancePreferences().effectiveScreenLayout
         if previousScreenLayout != screenLayout { previousScreenLayout = screenLayout; cancelInteractions() }
         let landscape = bounds.width > bounds.height
         if state.landscape != landscape { state.landscape = landscape; cancelInteractions() }
@@ -222,7 +222,7 @@ final class BoundCompanionCoordinator {
     func bringControlsToFront() {
         guard let owner else { return }
         layoutCycleButton(bounds: owner.view.bounds, safeArea: owner.view.safeAreaInsets)
-        if state.landscape || BoundAppearancePreferences().screenLayout == .delta {
+        if state.landscape || BoundAppearancePreferences().effectiveScreenLayout == .delta {
             layoutFloatingPanel()
         }
         sharing.setRemotePresentationEnabled(state.content == .friend && overlay?.isHidden == false)
@@ -299,12 +299,12 @@ final class BoundCompanionCoordinator {
         let right = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == "r" }) })
         let rightFrame = right.map { owner.controllerView.convert($0.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view) }
         let menuHitSize = menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)).size
-        let boundPortrait = !state.landscape && BoundAppearancePreferences().screenLayout == .bound
+        let boundPortrait = !state.landscape && BoundAppearancePreferences().effectiveScreenLayout == .bound
         let select = skin.items(for: traits)?.first { $0.inputs.allInputs.contains { $0.stringValue == "select" } }
-        let selectArtwork = boundPortrait && BoundAppearancePreferences().theme != .minimal
+        let selectArtwork = boundPortrait && BoundAppearancePreferences().effectiveTheme != .minimal
             ? select.flatMap { skin.image(for: $0, traits: traits, preferredSize: .large)?.0 } : nil
         controls.configure(menuFrame: frame, controllerFrame: controller, landscape: state.landscape,
-            minimal: BoundAppearancePreferences().theme == .minimal, content: state.content,
+            minimal: BoundAppearancePreferences().effectiveTheme == .minimal, content: state.content,
             canvas: bounds.inset(by: safeArea), occupied: occupied, rightShoulderFrame: rightFrame, menuHitSize: menuHitSize, boundPortrait: boundPortrait, selectArtwork: selectArtwork,
             rightControlGutter: owner.boundLandscapeControlGutter(),
             menuHitFrame: owner.controllerView.convert(menu.extendedFrame.applying(.init(scaleX: owner.controllerView.bounds.width, y: owner.controllerView.bounds.height)), to: owner.view))
@@ -358,7 +358,7 @@ final class BoundCompanionCoordinator {
             && !overlay.frame.contains(point)
     }
     private func shouldReceive(_ touch: UITouch) -> Bool {
-        guard (state.landscape || (BoundAppearancePreferences().screenLayout == .delta && state.content != .types)), !isEditingNotes, !state.showingFriends, !state.showingSettings,
+        guard (state.landscape || (BoundAppearancePreferences().effectiveScreenLayout == .delta && state.content != .types)), !isEditingNotes, !state.showingFriends, !state.showingSettings,
               let owner, let controls, !state.hidden else { return false }
         let p = touch.location(in: owner.view)
         guard !controls.frame.contains(p), owner.gameView.convert(owner.gameView.bounds, to: owner.view).contains(p) else { return false }
@@ -460,7 +460,7 @@ struct BoundCompanionPanel: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .accessibilityLabel("Pokémon type effectiveness chart")
                         .accessibilityIdentifier("bound.type-chart")
-                } else { BoundTypeChartView(topInset: state.chartTopInset, constrainsPan: BoundAppearancePreferences().screenLayout == .bound) }
+                } else { BoundTypeChartView(topInset: state.chartTopInset, constrainsPan: BoundAppearancePreferences().effectiveScreenLayout == .bound) }
             }
         }.background(state.content == .types ? Color.black : Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: state.landscape ? 8 : state.content == .types ? 0 : 4))
@@ -475,31 +475,8 @@ private struct BoundPiPSettings: View {
     var body: some View {
         NavigationStack {
             Form {
-                BoundAppearanceSettings()
-                Section("Emulation backend") {
-                    if let details = state.emulationDetails {
-                        LabeledContent("Active package", value: details.packageName).accessibilityIdentifier("bound.emulation-package")
-                        #if DEBUG
-                        LabeledContent("Package identifier", value: details.packageIdentifier).font(.caption)
-                        LabeledContent("Package build", value: details.packageBuild).accessibilityIdentifier("bound.emulation-package-build")
-                        #else
-                        LabeledContent("Package version", value: details.packageVersion ?? "Source build").accessibilityIdentifier("bound.emulation-package-build")
-                        #endif
-                        if let engine = details.engineName {
-                            LabeledContent("Emulator engine", value: engine).accessibilityIdentifier("bound.emulation-engine")
-                            #if DEBUG
-                            if let revision = details.engineRevision {
-                                LabeledContent("Engine source", value: "Pinned " + String(revision.prefix(12))).accessibilityIdentifier("bound.emulation-engine-build")
-                            }
-                            #endif
-                        }
-                        #if DEBUG
-                        Text("DeltaCore pinned source " + String(BoundEmulationDetails.deltaCoreRevision.prefix(12))).font(.caption)
-                        Text("Delta upstream source " + String(BoundEmulationDetails.deltaUpstreamRevision.prefix(12))).font(.caption)
-                        #endif
-                        Text("Screen layout changes presentation only; it does not switch the emulator engine.").font(.footnote).foregroundStyle(.secondary)
-                    } else { Text("No emulation package is active.") }
-                }
+                BoundAppearanceSettings(emulationDetails: state.emulationDetails)
+                if !BoundFeatureVisibility.simplifiedSettings {
                 Section("Picture in picture") {
                     Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to restore it. Portrait Types zooms and pans its chart content.")
                     ForEach([BoundPiPContent.friend, .notes], id: \.rawValue) { content in
@@ -513,8 +490,9 @@ private struct BoundPiPSettings: View {
                 Section("Controls") {
                     Text("Classic placement is the default. Customize positions separately for portrait and landscape, or reset to defaults.")
                 }
+                }
             }.navigationTitle("Bound Settings").toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { Button("Buttons") { state.pendingControlEditor = true; dismiss() }.accessibilityLabel("Button placement").accessibilityIdentifier("bound.button-placement") }
+                if !BoundFeatureVisibility.simplifiedSettings { ToolbarItem(placement: .navigationBarLeading) { Button("Buttons") { state.pendingControlEditor = true; dismiss() }.accessibilityLabel("Button placement").accessibilityIdentifier("bound.button-placement") } }
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }.onDisappear(perform: closed)
@@ -538,7 +516,7 @@ private struct BoundNotesEditor: View {
     @FocusState private var classicEditing: Bool
     @AppStorage(BoundAppearancePreferences.screenLayoutKey) private var screenLayoutRaw = BoundAppearancePreferences.defaultScreenLayout.rawValue
     private let store = BoundNotesStore()
-    private var usesBoundArrangement: Bool { (BoundScreenLayout(rawValue: screenLayoutRaw) ?? BoundAppearancePreferences.defaultScreenLayout) == .bound }
+    private var usesBoundArrangement: Bool { BoundAppearancePreferences().effectiveScreenLayout == .bound }
     var body: some View {
         VStack(alignment: .leading) {
             if usesBoundArrangement {
@@ -649,6 +627,8 @@ private struct BoundFriendsSheet: View {
     @State private var password = ""
     @State private var name = ""
     @State private var invite = ""
+    @State private var reportingRoom: FriendRoom?
+    @State private var blockingRoom: FriendRoom?
     var closed: () -> Void = {}
     var body: some View {
         NavigationStack {
@@ -677,13 +657,31 @@ private struct BoundFriendsSheet: View {
                     Section("Friends") {
                         Text(onboarding.message).font(.caption)
                         ForEach(onboarding.rooms) { room in
-                            Button(room.displayName) { onboarding.select(room) }
-                                .disabled(onboarding.busy)
+                            HStack {
+                                Button(room.displayName) { onboarding.select(room) }
+                                Spacer()
+                                Menu {
+                                    Button("Report") { reportingRoom = room }
+                                    Button("Block", role: .destructive) { blockingRoom = room }
+                                } label: { Image(systemName: "ellipsis.circle") }
+                                    .accessibilityLabel("Actions for \(room.displayName)")
+                            }.disabled(onboarding.busy)
                         }
                         Button("Refresh") { onboarding.refresh() }.disabled(onboarding.busy)
                         if onboarding.selected != nil {
                             Button(sharing.active ? "Stop sharing" : "Start sharing") {
                                 if sharing.active { sharing.stop() } else { sharing.start() }
+                            }
+                        }
+                    }
+                    if !onboarding.blocks.isEmpty {
+                        Section("Blocked") {
+                            ForEach(onboarding.blocks) { block in
+                                HStack {
+                                    Text(block.displayName)
+                                    Spacer()
+                                    Button("Unblock") { onboarding.unblock(block) }.disabled(onboarding.busy)
+                                }
                             }
                         }
                     }
@@ -705,6 +703,9 @@ private struct BoundFriendsSheet: View {
                         }.disabled(account.busy)
                     }
                 }
+                Section {
+                    Link("Rules & contact", destination: URL(string: "https://evanvonessen.github.io/bound/moderation.html")!).font(.caption)
+                }
             }.navigationTitle("Friends")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(account.busy) } }
         }
@@ -715,6 +716,30 @@ private struct BoundFriendsSheet: View {
         }
         .onDisappear { password = ""; onboarding.close(); closed() }
         .interactiveDismissDisabled(account.busy)
+        .sheet(item: $reportingRoom) { room in BoundReportView(onboarding: onboarding, room: room) }
+        .confirmationDialog("Block this friend?", isPresented: Binding(get: { blockingRoom != nil }, set: { if !$0 { blockingRoom = nil } }), titleVisibility: .visible) {
+            Button("Block", role: .destructive) { if let room = blockingRoom { onboarding.block(room) }; blockingRoom = nil }
+            Button("Cancel", role: .cancel) { blockingRoom = nil }
+        }
+    }
+}
+
+private struct BoundReportView: View {
+    @ObservedObject var onboarding: FriendOnboarding
+    let room: FriendRoom
+    @Environment(\.dismiss) private var dismiss
+    @State private var reason = FriendReportReason.harassment
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Reason", selection: $reason) {
+                    ForEach(FriendReportReason.allCases) { item in Text(item.title).tag(item) }
+                }.pickerStyle(.inline)
+                Button("Report") { onboarding.report(room, reason: reason); dismiss() }.disabled(onboarding.busy)
+                Link("Rules & contact", destination: URL(string: "https://evanvonessen.github.io/bound/moderation.html")!).font(.caption)
+            }.navigationTitle("Report")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
     }
 }
 

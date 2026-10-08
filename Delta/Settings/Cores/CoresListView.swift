@@ -13,7 +13,7 @@ struct CoresListView: View
 {
     var body: some View {
         Form {
-            ForEach(System.registeredSystems, id: \.self) { system in
+            ForEach(System.registeredSystems.filter { !BoundFeatureVisibility.simplifiedSettings || $0 == .gba }, id: \.self) { system in
                 NavigationLink(destination: coreSettingsDestination(for: system)) {
                     LabeledContent(system.localizedName) {
                         Text(coreName(for: system))

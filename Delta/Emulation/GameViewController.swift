@@ -576,7 +576,7 @@ extension GameViewController
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator)
     {
         boundCompanion.cancelInteractions()
-        if BoundControllerModePreferences().isEnabled && BoundAppearancePreferences().screenLayout == .bound {
+        if BoundControllerModePreferences().isEnabled && BoundAppearancePreferences().effectiveScreenLayout == .bound {
             cancelBoundTouchInputsPreservingExternalHolds()
         }
         super.viewWillTransition(to: size, with: coordinator)
@@ -911,7 +911,7 @@ private extension GameViewController
         // Controller Mode retains a real on-screen Menu even when upstream
         // normally hides the virtual controller for an assigned external pad.
         let menuOnly = BoundControllerModePreferences.hidesTouchControls(enabled: BoundControllerModePreferences().isEnabled,
-            layout: BoundAppearancePreferences().screenLayout, landscape: view.bounds.width > view.bounds.height)
+            layout: BoundAppearancePreferences().effectiveScreenLayout, landscape: view.bounds.width > view.bounds.height)
         if menuOnly, let firstActiveController {
             self.controllerView.playerIndex = firstActiveController.playerIndex
             self.controllerView.isHidden = false
@@ -2858,7 +2858,7 @@ extension GameViewController {
         let base = unwrappedBoundControllerSkin(current)
         let layout = BoundControlPlacementStore.shared.read(skin: base.identifier, landscape: view.bounds.width > view.bounds.height)
         let mode = BoundControllerModePreferences.hidesTouchControls(enabled: BoundControllerModePreferences().isEnabled,
-            layout: BoundAppearancePreferences().screenLayout, landscape: view.bounds.width > view.bounds.height)
+            layout: BoundAppearancePreferences().effectiveScreenLayout, landscape: view.bounds.width > view.bounds.height)
         if boundControllerModeActive != mode {
             cancelBoundTouchInputsPreservingExternalHolds()
             boundControllerModeActive = mode
@@ -2867,7 +2867,7 @@ extension GameViewController {
             // so a nested layout pass cannot repeat this transition.
             updateControllers()
         }
-        let minimal = BoundAppearancePreferences().theme == .minimal
+        let minimal = BoundAppearancePreferences().effectiveTheme == .minimal
         let source = nativeBoundControllerFrame(base: base)
         let insets = nativeBoundControllerInsets(base: base)
         let gutter = nativeBoundLandscapeControlGutter(base: base)
@@ -2926,7 +2926,7 @@ extension GameViewController {
     /// it neither changes rendering bounds nor uses a stale pre-rotation game frame.
     func boundLandscapeControlGutter() -> CGRect? {
         let bounds = view.bounds
-        guard BoundAppearancePreferences().screenLayout == .bound, bounds.width > bounds.height else { return nil }
+        guard BoundAppearancePreferences().effectiveScreenLayout == .bound, bounds.width > bounds.height else { return nil }
         let insets = view.safeAreaInsets
         let horizontal = CGRect(x: bounds.minX+insets.left, y: bounds.minY,
             width: max(1, bounds.width-insets.left-insets.right), height: bounds.height)

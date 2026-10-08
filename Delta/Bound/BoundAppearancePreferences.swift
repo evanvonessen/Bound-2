@@ -26,6 +26,11 @@ struct BoundEmulationDetails: Equatable {
     static let deltaUpstreamRevision = "c1d3d068e019e6493eed45654569db3cc5beb86a"
 }
 
+/// Restore this exact feature set by changing one flag; stored preferences remain intact.
+enum BoundFeatureVisibility {
+    static let simplifiedSettings = true
+}
+
 /// Appearance and screen arrangement are independent preferences. Touch feedback uses Delta's existing settings.
 final class BoundAppearancePreferences {
     static let defaultScreenLayout: BoundScreenLayout = .bound
@@ -35,6 +40,8 @@ final class BoundAppearancePreferences {
     static let didChangeNotification = Notification.Name("BoundAppearanceDidChange")
     private let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    var effectiveTheme: BoundTheme { BoundFeatureVisibility.simplifiedSettings ? .delta : theme }
+    var effectiveScreenLayout: BoundScreenLayout { BoundFeatureVisibility.simplifiedSettings ? .bound : screenLayout }
     var theme: BoundTheme {
         get { BoundTheme(rawValue: defaults.string(forKey: Self.themeKey) ?? "") ?? Self.defaultTheme }
         set {

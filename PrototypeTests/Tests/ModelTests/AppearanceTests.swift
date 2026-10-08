@@ -2,6 +2,20 @@ import Foundation
 import XCTest
 @testable import Models
 final class AppearanceTests: XCTestCase {
+    func testSimplifiedPresentationPreservesSavedChoicesForRestoration() throws {
+        let suite = "BoundHiddenFeatures." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = BoundAppearancePreferences(defaults: defaults)
+        preferences.theme = .minimal
+        preferences.screenLayout = .delta
+        XCTAssertEqual(preferences.effectiveTheme, .delta)
+        XCTAssertEqual(preferences.effectiveScreenLayout, .bound)
+        XCTAssertEqual(preferences.theme, .minimal)
+        XCTAssertEqual(preferences.screenLayout, .delta)
+        XCTAssertEqual(defaults.string(forKey: BoundAppearancePreferences.themeKey), "minimal")
+        XCTAssertEqual(defaults.string(forKey: BoundAppearancePreferences.screenLayoutKey), "delta")
+    }
     func testNativeDefaultPersistAndResetWithoutChangingOtherPreferences() throws {
         let suite = "BoundAppearanceTests." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

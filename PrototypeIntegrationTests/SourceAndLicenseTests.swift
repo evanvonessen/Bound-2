@@ -23,7 +23,7 @@ final class SourceAndLicenseTests: XCTestCase {
         XCTAssertEqual(fontHash, "fb84ef1d7f837c5993b80b9a3319284dc49883394d0def0c9c999b51b4683d13")
     }
     func testSourceAvailabilityAndVersionDescribeCurrentBundle() throws {
-        XCTAssertEqual(BoundSourceNotices.availability, "Bound 2 source, build instructions, and modification notices are available in its source repository.")
+        XCTAssertEqual(BoundSourceNotices.availability, "Bound source, build instructions, and modification notices are available in its source repository.")
         XCTAssertEqual(BoundSourceNotices.sourceRepository.absoluteString, "https://github.com/evanvonessen/bound")
         let version = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
         let build = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)

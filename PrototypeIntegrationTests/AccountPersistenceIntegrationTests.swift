@@ -125,3 +125,59 @@ private final class OnboardingObservation: SharingCancellation {
     func cancel() { cancelled = true }
     func fire() { callback() }
 }
+
+@MainActor
+final class FriendModerationIntegrationTests: XCTestCase {
+    private func identity() throws -> AppCloudSession {
+        let owner = UUID()
+        let claims = try JSONSerialization.data(withJSONObject: ["sub": owner.uuidString.lowercased(), "exp": Date().timeIntervalSince1970 + 3600])
+        let payload = claims.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        return try AppCloudSession(owner: owner, key: "synthetic-public", token: "fixture.\(payload).signature")
+    }
+    func testBlockClearsSelectedSharingAndServerReceiptControlsListAndUnblock() async throws {
+        let identity = try identity(), room = FriendRoom(roomID: UUID().uuidString, displayName: "Fixture Friend")
+        let block = FriendBlock(blockID: UUID(), displayName: room.displayName)
+        var calls: [(String, [String: String])] = []
+        let model = FriendOnboarding(call: { _, action, payload in
+            calls.append((action, payload))
+            switch action {
+            case "list": return .init(ok: true, rooms: [room], blocks: [])
+            case "block": return .init(ok: true, blocks: [block])
+            case "unblock": return .init(ok: true, blocks: [])
+            default: throw BoundFriendError.unavailable
+            }
+        }, observeAccount: { OnboardingObservation($0) })
+        let sharing = FriendSharingSession(configuration: nil, authenticatedMode: true)
+        model.open(sharing: sharing, existing: { identity })
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        XCTAssertEqual(model.rooms, [room]); model.select(room); XCTAssertNotNil(model.selected)
+        model.block(room)
+        XCTAssertNil(model.selected); XCTAssertFalse(sharing.active)
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        XCTAssertEqual(model.rooms, []); XCTAssertEqual(model.blocks, [block])
+        XCTAssertTrue(calls.contains { $0.0 == "block" && $0.1 == ["roomID": room.roomID] })
+        model.unblock(block)
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        XCTAssertEqual(model.blocks, []); XCTAssertNil(model.selected); XCTAssertEqual(model.rooms, [])
+        model.close()
+    }
+    func testReportUsesOnlyRoomAndCategoryAndDoesNotClaimReceiptOnDenial() async throws {
+        let identity = try identity(), room = FriendRoom(roomID: UUID().uuidString, displayName: "Fixture Friend")
+        var denied = false
+        let model = FriendOnboarding(call: { _, action, payload in
+            if action == "list" { return .init(ok: true, rooms: [room]) }
+            XCTAssertEqual(action, "report"); XCTAssertEqual(payload, ["roomID": room.roomID, "reason": "harassment"])
+            return denied ? .init(ok: false, error: "rate_limited") : .init(ok: true, reportID: UUID())
+        }, observeAccount: { OnboardingObservation($0) })
+        model.open(sharing: FriendSharingSession(configuration: nil, authenticatedMode: true), existing: { identity })
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        model.report(room, reason: .harassment)
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        XCTAssertEqual(model.message, "Report sent.")
+        denied = true; model.report(room, reason: .harassment)
+        for _ in 0..<1000 { if !model.busy { break }; await Task.yield() }
+        XCTAssertEqual(model.message, "Too many attempts. Try again later.")
+        model.signOut(); XCTAssertEqual(model.blocks, []); XCTAssertEqual(model.rooms, [])
+        model.close()
+    }
+}

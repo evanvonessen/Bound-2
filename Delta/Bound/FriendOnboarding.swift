@@ -15,6 +15,31 @@ struct FriendResponse: Decodable, Sendable {
     var code: String? = nil
     var room: FriendRoom? = nil
     var rooms: [FriendRoom]? = nil
+    var blocks: [FriendBlock]? = nil
+    var reportID: UUID? = nil
+    var error: String? = nil
+}
+
+struct FriendBlock: Decodable, Equatable, Identifiable, Sendable {
+    let blockID: UUID
+    let displayName: String
+    var id: UUID { blockID }
+    var valid: Bool { !displayName.isEmpty && displayName.count <= 40 && !displayName.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) } }
+}
+
+enum FriendReportReason: String, CaseIterable, Identifiable {
+    case harassment, hate, sexual, violence, spam, other
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .harassment: return "Harassment"
+        case .hate: return "Hate or discrimination"
+        case .sexual: return "Sexual content"
+        case .violence: return "Threats or graphic violence"
+        case .spam: return "Spam or impersonation"
+        case .other: return "Other"
+        }
+    }
 }
 
 @MainActor
@@ -23,6 +48,7 @@ final class FriendOnboarding: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var message = "Sign in to add a friend."
     @Published private(set) var rooms: [FriendRoom] = []
+    @Published private(set) var blocks: [FriendBlock] = []
     @Published private(set) var selected: FriendRoom?
     @Published private(set) var inviteCode: String?
     @Published private(set) var managesFlow = false
@@ -40,7 +66,6 @@ final class FriendOnboarding: ObservableObject {
     init(call: @escaping @MainActor (AppCloudSession, String, [String: String]) async throws -> FriendResponse = { session, action, payload in
         let bytes = try await FriendSharingTokens.perform(try session.friendOnboardingRequest(action: action, payload: payload))
         let response = try JSONDecoder().decode(FriendResponse.self, from: bytes)
-        guard response.ok else { throw FriendSharingTokenError.unavailable }
         return response
     }, observeAccount: @escaping @MainActor (@escaping @MainActor () -> Void) -> any SharingCancellation = {
         FriendSharingTimer(after: 1, repeating: true, action: $0)
@@ -76,7 +101,7 @@ final class FriendOnboarding: ObservableObject {
         let current = candidate.flatMap { (try? $0.credentials()) == nil ? nil : $0 }
         guard current?.owner != ownerID else { return }
         let hadAccount = ownerID != nil
-        cancelPendingRequest(); ownerID = nil; signedIn = false; rooms = []; selected = nil
+        cancelPendingRequest(); ownerID = nil; signedIn = false; rooms = []; blocks = []; selected = nil
         if hadAccount || current != nil || managesFlow {
             managesFlow = true
             sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() })
@@ -123,7 +148,7 @@ final class FriendOnboarding: ObservableObject {
     }
     func signOut() {
         cancelPendingRequest(); ownerID = nil; signedIn = false; managesFlow = true
-        rooms = []; selected = nil; message = "Sign in above to add a friend."
+        rooms = []; blocks = []; selected = nil; message = "Sign in above to add a friend."
         sharing?.configureAuthenticatedRoom(nil, identity: { nil })
     }
     func select(_ room: FriendRoom) {
@@ -140,6 +165,22 @@ final class FriendOnboarding: ObservableObject {
         if selected?.roomID == room.roomID { selected = nil; sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() }) }
         request("remove", payload: ["roomID": room.roomID])
     }
+    func block(_ room: FriendRoom) {
+        guard !busy, rooms.contains(room) else { return }
+        if selected?.roomID == room.roomID {
+            selected = nil
+            sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() })
+        }
+        request("block", payload: ["roomID": room.roomID])
+    }
+    func unblock(_ block: FriendBlock) {
+        guard blocks.contains(block) else { return }
+        request("unblock", payload: ["blockID": block.blockID.uuidString.lowercased()])
+    }
+    func report(_ room: FriendRoom, reason: FriendReportReason) {
+        guard rooms.contains(room) else { return }
+        request("report", payload: ["roomID": room.roomID, "reason": reason.rawValue])
+    }
     private func request(_ action: String, payload: [String: String]) {
         guard !busy else { return }
         guard let identity = currentIdentity() else { signOut(); return }
@@ -151,10 +192,23 @@ final class FriendOnboarding: ObservableObject {
                 try Task.checkCancellation()
                 guard let self, self.generation == run else { return }
                 guard self.currentIdentity()?.owner == identity.owner else { self.signOut(); return }
-                guard response.ok else { throw FriendSharingTokenError.unavailable }
+                guard response.ok else {
+                    self.busy = false; self.task = nil
+                    switch response.error {
+                    case "rate_limited": self.message = "Too many attempts. Try again later."
+                    case "block_limit": self.message = "Your block list is full. Remove a block before adding another."
+                    case "name_not_allowed": self.message = "Choose a different display name."
+                    default: self.message = "Could not update friends. Try again."
+                    }
+                    return
+                }
                 if action == "list" {
                     guard let rooms = response.rooms, rooms.count <= 20, rooms.allSatisfy(\.valid), Set(rooms.map(\.roomID)).count == rooms.count else { throw FriendSharingTokenError.unavailable }
                     self.rooms = rooms
+                    if let blocks = response.blocks {
+                        guard blocks.count <= 100, blocks.allSatisfy(\.valid), Set(blocks.map(\.blockID)).count == blocks.count else { throw FriendSharingTokenError.unavailable }
+                        self.blocks = blocks
+                    }
                     if let selected = self.selected, !rooms.contains(where: { $0.roomID == selected.roomID }) {
                         self.selected = nil; self.sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() })
                     }
@@ -164,14 +218,19 @@ final class FriendOnboarding: ObservableObject {
                 } else if action == "accept" {
                     guard let room = response.room, room.valid else { throw FriendSharingTokenError.unavailable }
                     self.rooms.removeAll { $0.roomID == room.roomID }; self.rooms.append(room); self.busy = false; self.select(room)
-                } else if action == "remove" {
+                } else if action == "remove" || action == "block" {
                     self.rooms.removeAll { $0.roomID == payload["roomID"] }
                     if self.selected?.roomID == payload["roomID"] {
                         self.selected = nil
                         self.sharing?.configureAuthenticatedRoom(nil, identity: { [weak self] in self?.sharingIdentity() })
                     }
                 }
-                self.busy = false; self.task = nil; self.message = ""
+                if action == "block" || action == "unblock" {
+                    guard let blocks = response.blocks, blocks.count <= 100, blocks.allSatisfy(\.valid), Set(blocks.map(\.blockID)).count == blocks.count else { throw FriendSharingTokenError.unavailable }
+                    self.blocks = blocks
+                }
+                if action == "report" { guard response.reportID != nil else { throw FriendSharingTokenError.unavailable } }
+                self.busy = false; self.task = nil; self.message = action == "report" ? "Report sent." : ""
             } catch {
                 guard let self, self.generation == run else { return }
                 self.busy = false; self.task = nil; self.message = "Could not update friends. Check the code or try again."

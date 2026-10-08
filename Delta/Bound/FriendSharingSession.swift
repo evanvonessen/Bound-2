@@ -407,7 +407,8 @@ final class FriendSharingSession: ObservableObject {
                 self.tokenExpiry = lease.expiresAt
                 let renewalRun = self.generation
                 self.tokenDeadline?.cancel()
-                self.tokenDeadline = self.scheduler.schedule(at: self.scheduler.now + max(1, lease.expiresAt - Date().timeIntervalSince1970 - 60)) { [weak self] in
+                let renewalLead = min(60, (lease.expiresAt - lease.issuedAt) / 2)
+                self.tokenDeadline = self.scheduler.schedule(at: self.scheduler.now + max(1, lease.expiresAt - Date().timeIntervalSince1970 - renewalLead)) { [weak self] in
                     guard let self, self.generation == renewalRun, self.active else { return }
                     self.requestToken(initial: false)
                 }

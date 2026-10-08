@@ -295,6 +295,7 @@ private extension SettingsViewController
     
     func isSectionHidden(_ section: Section) -> Bool
     {
+        if BoundFeatureVisibility.simplifiedSettings && [.controllerSkins, .hapticFeedback, .hapticTouch, .airPlay, .credits].contains(section) { return true }
         switch section
         {
         // This app uses Bound's friend service; upstream subscription/sync is inactive.
@@ -645,6 +646,8 @@ extension SettingsViewController
     override func tableView(_ tableView: UITableView, numberOfRowsInSection sectionIndex: Int) -> Int
     {
         let section = Section(rawValue: sectionIndex)!
+        if isSectionHidden(section) { return 0 }
+        if section == .cores && BoundFeatureVisibility.simplifiedSettings { return 1 }
         switch section
         {
         case .controllers: return 4
@@ -696,6 +699,7 @@ extension SettingsViewController
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell
     {
+        let indexPath = (BoundFeatureVisibility.simplifiedSettings && indexPath.section == Section.cores.rawValue) ? IndexPath(row: CoresRow.gba.rawValue, section: indexPath.section) : indexPath
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
 
         let section = Section(rawValue: indexPath.section)!
@@ -732,7 +736,7 @@ extension SettingsViewController
             }
             
         case .cores:
-            let row = CoresRow(rawValue: indexPath.row)!
+            let row = BoundFeatureVisibility.simplifiedSettings ? CoresRow.gba : CoresRow(rawValue: indexPath.row)!
             switch row
             {
             case .ds:
@@ -807,7 +811,7 @@ extension SettingsViewController
         case .cores:
             let hostingController: UIViewController
             
-            let row = CoresRow(rawValue: indexPath.row)!
+            let row = BoundFeatureVisibility.simplifiedSettings ? CoresRow.gba : CoresRow(rawValue: indexPath.row)!
             switch row
             {
             case .nes: hostingController = NESCoreSettingsView.makeViewController()

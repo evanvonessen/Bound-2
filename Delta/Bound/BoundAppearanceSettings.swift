@@ -6,7 +6,9 @@ struct BoundAppearanceSettings: View {
     @AppStorage(BoundAppearancePreferences.themeKey) private var themeRaw = BoundAppearancePreferences.defaultTheme.rawValue
     @AppStorage(Settings.Name.isButtonHapticFeedbackEnabled.rawValue) private var buttons = true
     @AppStorage(Settings.Name.isThumbstickHapticFeedbackEnabled.rawValue) private var sticks = true
+    var emulationDetails: BoundEmulationDetails? = nil
     var body: some View {
+        if !BoundFeatureVisibility.simplifiedSettings {
         Section("Screen layout") {
             Picker("Screen arrangement", selection: Binding(get: {
                 BoundScreenLayout(rawValue: screenLayoutRaw) ?? BoundAppearancePreferences.defaultScreenLayout
@@ -33,19 +35,44 @@ struct BoundAppearanceSettings: View {
         } header: { Text("Touch feedback") } footer: {
             Text("Uses native touch feedback. Both are on by default. Physical controllers do not trigger touch feedback; this device may not support vibration.")
         }
-        Section("About Bound 2") {
+        }
+        Section("About Bound") {
             LabeledContent("Version", value: (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") + " (" + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "") + ")")
-            Text("Built on Delta. Delta and its emulator dependencies retain their original copyright and license notices.").font(.footnote).foregroundStyle(.secondary)
-            Link("Delta source and license", destination: URL(string: "https://github.com/rileytestut/Delta")!)
+            Text("Bound is built on Delta. Delta and its emulator dependencies retain their original copyright and license notices.").font(.footnote).foregroundStyle(.secondary)
+            DisclosureGroup("Emulation backend") {
+                    if let details = emulationDetails {
+                        LabeledContent("Active package", value: details.packageName).accessibilityIdentifier("bound.emulation-package")
+                        #if DEBUG
+                        LabeledContent("Package identifier", value: details.packageIdentifier).font(.caption)
+                        LabeledContent("Package build", value: details.packageBuild).accessibilityIdentifier("bound.emulation-package-build")
+                        #else
+                        LabeledContent("Package version", value: details.packageVersion ?? "Source build").accessibilityIdentifier("bound.emulation-package-build")
+                        #endif
+                        if let engine = details.engineName {
+                            LabeledContent("Emulator engine", value: engine).accessibilityIdentifier("bound.emulation-engine")
+                            #if DEBUG
+                            if let revision = details.engineRevision {
+                                LabeledContent("Engine source", value: "Pinned " + String(revision.prefix(12))).accessibilityIdentifier("bound.emulation-engine-build")
+                            }
+                            #endif
+                        }
+                        #if DEBUG
+                        Text("DeltaCore pinned source " + String(BoundEmulationDetails.deltaCoreRevision.prefix(12))).font(.caption)
+                        Text("Delta upstream source " + String(BoundEmulationDetails.deltaUpstreamRevision.prefix(12))).font(.caption)
+                        #endif
+                    } else { Text("No emulation package is active.") }
+            }
             NavigationLink("Source and licenses") { BoundSourceAndLicenses() }
                 .accessibilityIdentifier("bound.source-and-licenses-link")
         }
+        if !BoundFeatureVisibility.simplifiedSettings {
         Section {
             Button("Reset appearance and feedback to defaults") {
                 BoundAppearancePreferences().reset()
                 Settings.isButtonHapticFeedbackEnabled = true
                 Settings.isThumbstickHapticFeedbackEnabled = true
             }.accessibilityIdentifier("bound.reset-appearance")
+        }
         }
     }
 }

@@ -36,7 +36,7 @@ final class BoundCompanionCycleButton: UIButton {
     @objc private func advance() {
         isHighlighted = false
         guard isEnabled, isUserInteractionEnabled, !isHidden else { return }
-        if BoundAppearancePreferences().screenLayout == .bound && Settings.isButtonHapticFeedbackEnabled {
+        if BoundAppearancePreferences().effectiveScreenLayout == .bound && Settings.isButtonHapticFeedbackEnabled {
             if let buttonFeedback { buttonFeedback() }
             else {
                 // Same intensity and capability fallback as Delta's native ButtonsInputView.

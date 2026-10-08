@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Source access and included notices are distinct from public distribution readiness.
 enum BoundSourceNotices {
-    static let availability = "Bound 2 source, build instructions, and modification notices are available in its source repository."
+    static let availability = "Bound source, build instructions, and modification notices are available in its source repository."
     static let sourceRepository = URL(string: "https://github.com/evanvonessen/bound")!
     static func version(in bundle: Bundle = .main) -> String {
         let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
@@ -15,7 +15,7 @@ enum BoundSourceNotices {
         var title: String {
             switch self {
             case .agpl: return "GNU AGPL version 3"
-            case .modifications: return "Bound 2 modifications"
+            case .modifications: return "Bound modifications"
             case .dependencies: return "Dependency inventory"
             case .notesFont: return "Notes font license"
             }
@@ -47,16 +47,17 @@ struct BoundSourceAndLicenses: View {
                     .accessibilityIdentifier("bound.source-version")
                 Text(BoundSourceNotices.availability)
                     .accessibilityIdentifier("bound.source-availability")
-                Link("Bound 2 source repository", destination: BoundSourceNotices.sourceRepository)
+                Link("Bound source repository", destination: BoundSourceNotices.sourceRepository)
                     .accessibilityIdentifier("bound.source-repository")
-                Text("These notices describe included software and remaining release questions. They do not certify public distribution readiness.")
-                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section("Upstream") {
                 Text("Built on Delta. Delta and its emulator dependencies retain their original copyright and license notices.")
                 Link("Delta upstream source", destination: URL(string: "https://github.com/rileytestut/Delta")!)
             }
             Section("Bundled notices") {
+                NavigationLink("Software licenses") {
+                    LicensesViewController.ViewRepresentable().ignoresSafeArea()
+                }
                 ForEach(BoundSourceNotices.Document.allCases) { document in
                     NavigationLink(document.title) { BoundLicenseDocumentView(document: document) }
                         .accessibilityIdentifier("bound.license-" + document.rawValue)

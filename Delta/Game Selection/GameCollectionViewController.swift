@@ -844,16 +844,17 @@ private extension GameCollectionViewController
         
         let settingsMenu = UIMenu(title: "", options: .displayInline, children: [settingsAction])
         
+        let visibleSettings: [UIMenuElement] = BoundFeatureVisibility.simplifiedSettings ? [] : [settingsMenu]
         switch game.type
         {
         case GameType.unknown:
-            return [renameAction, shareAction, settingsMenu, deleteAction]
+            return [renameAction, shareAction] + visibleSettings + [deleteAction]
             
         case .ds where game.identifier == Game.melonDSBIOSIdentifier || game.identifier == Game.melonDSDSiBIOSIdentifier:
-            return openActions + [favoriteAction, renameAction, changeArtworkAction, settingsMenu, saveStatesAction]
+            return openActions + [favoriteAction, renameAction, changeArtworkAction] + visibleSettings + [saveStatesAction]
             
         default:
-            return openActions + [favoriteAction, renameAction, changeArtworkAction, shareAction, settingsMenu, savesMenu, deleteAction]
+            return openActions + [favoriteAction, renameAction, changeArtworkAction, shareAction] + visibleSettings + [savesMenu, deleteAction]
         }
     }
     
