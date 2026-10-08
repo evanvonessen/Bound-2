@@ -170,3 +170,14 @@ struct BoundPiPLayout {
         return nil
     }
 }
+
+
+/// Fits the pointer toolbar inside a resizable iPad-on-Mac window.
+enum BoundDesktopCompanionLayout {
+    static func toolbar(in bounds: CGRect) -> CGRect {
+        guard bounds.width.isFinite, bounds.height.isFinite, bounds.width > 16, bounds.height > 8 else { return .zero }
+        let width = min(360, bounds.width - 16)
+        let height = min(44, bounds.height - 8)
+        return CGRect(x: bounds.midX - width / 2, y: bounds.minY + 4, width: width, height: height)
+    }
+}

@@ -1,0 +1,38 @@
+diff --git a/Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift b/Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift
+index c94e7593..d6e85189 100644
+--- a/Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift	
++++ b/Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift	
+@@ -156,15 +156,25 @@ public class KeyboardGameController: UIResponder, GameController
+                 input = Input(stringValue: key.lowercased())
+             }
+             
+-            if isActive
+-            {
+-                self?.activate(input)
+-            }
+-            else
+-            {
+-                self?.deactivate(input)
+-            }
++            let commandHeld = profile.button(forKeyCode: .leftGUI)?.isPressed == true
++                || profile.button(forKeyCode: .rightGUI)?.isPressed == true
++            self?.processKey(input, isActive: isActive, commandHeld: commandHeld)
++        }
++    }
++
++    // UIKit handles desktop Command shortcuts independently of GCKeyboard. Do not
++    // also send those keys to the emulator, even when a user maps 1/2/3 to inputs.
++    // Release preexisting holds on Command-down so a swallowed key-up cannot stick.
++    internal func processKey(_ input: Input, isActive: Bool, commandHeld: Bool,
++                             isRunningOnMac: Bool = ProcessInfo.processInfo.isiOSAppOnMac)
++    {
++        if isRunningOnMac && (commandHeld || input == .command)
++        {
++            for active in self.activatedInputs.keys { self.deactivate(active) }
++            return
+         }
++        if isActive { self.activate(input) }
++        else { self.deactivate(input) }
+     }
+ }
+ 

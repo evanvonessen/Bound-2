@@ -450,6 +450,28 @@ class GameViewController: DeltaCore.GameViewController
 /// UIViewController
 extension GameViewController
 {
+    override var keyCommands: [UIKeyCommand]? {
+        guard ProcessInfo.processInfo.isiOSAppOnMac else { return super.keyCommands }
+        let panelCommands = [("1", "Show Friends"), ("2", "Show Notes"), ("3", "Show Types")].map { key, title in
+            UIKeyCommand(title: title, action: #selector(selectBoundDesktopPanel(_:)), input: key, modifierFlags: .command)
+        }
+        return (super.keyCommands ?? []) + panelCommands + [
+            UIKeyCommand(title: "Show or Hide Companion", action: #selector(toggleBoundDesktopPanel), input: "p", modifierFlags: [.command, .shift])
+        ]
+    }
+    private var canUseBoundDesktopCommands: Bool {
+        ProcessInfo.processInfo.isiOSAppOnMac && viewIfLoaded?.window?.windowScene?.activationState == .foregroundActive
+            && presentedViewController == nil && !isSelectingSustainedButtons && emulatorCore != nil
+    }
+    @objc private func selectBoundDesktopPanel(_ command: UIKeyCommand) {
+        guard canUseBoundDesktopCommands, let key = command.input, let value = Int(key) else { return }
+        boundCompanion.selectPanel(value - 1)
+    }
+    @objc private func toggleBoundDesktopPanel() {
+        guard canUseBoundDesktopCommands else { return }
+        boundCompanion.performDesktopPiPAction(.toggleVisibility)
+    }
+
     override func viewDidLoad()
     {
         super.viewDidLoad()
@@ -2780,6 +2802,7 @@ private extension GameViewController
         guard let session = notification.object as? UISceneSession, let windowScene = self.view.window?.windowScene, session.scene == windowScene else { return }
         Logger.main.info("Discarding current scene session, quitting emulation for game \((self.game as? Game)?.identifier ?? "nil", privacy: .public)")
         
+        if ProcessInfo.processInfo.isiOSAppOnMac { boundCompanion.stop() }
         self.updateAutoSaveState()
         self.emulatorCore?.stop() // Required to ensure data isn't corrupted due to starting new game before previous EmulatorBridge state is reset.
     }

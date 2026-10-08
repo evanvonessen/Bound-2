@@ -53,8 +53,10 @@ final class BoundCompanionCoordinator {
     let onboarding = FriendOnboarding()
     let account = BoundFriendAccount.shared
     let state: BoundCompanionState
-    init(state: BoundCompanionState? = nil) {
+    let usesDesktopControls: Bool
+    init(state: BoundCompanionState? = nil, usesDesktopControls: Bool = ProcessInfo.processInfo.isiOSAppOnMac) {
         self.state = state ?? BoundCompanionState()
+        self.usesDesktopControls = usesDesktopControls
         #if DEBUG && targetEnvironment(simulator)
         let environment = ProcessInfo.processInfo.environment
         if ProcessInfo.processInfo.arguments.contains("--bound-ui-paired-transport"),
@@ -70,11 +72,13 @@ final class BoundCompanionCoordinator {
     }
     private var host: UIHostingController<BoundCompanionPanel>?
     private var controls: BoundCompanionCycleButton?
+    private var desktopControls: BoundDesktopCompanionBar?
     private var subscriptions = Set<AnyCancellable>()
     private var nativeMenuAccessibility: BoundNativeMenuAccessibilityElement?
     private weak var settingsPresenter: UIViewController?
     private var overlay: BoundOverlayView?
     private weak var owner: GameViewController?
+    private weak var desktopScene: UIWindowScene?
     private weak var boundCore: EmulatorCore?
     private var gameID = ""
     private var notesPaused = false
@@ -122,6 +126,19 @@ final class BoundCompanionCoordinator {
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.background() })
         // Restore foreground eligibility without automatically restarting authenticated sharing.
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in self?.foreground() })
+        if usesDesktopControls {
+            // One Mac window may background/close while another keeps the app active.
+            for name in [UIScene.didEnterBackgroundNotification, UIScene.didDisconnectNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] event in
+                    guard let self, let scene = event.object as? UIWindowScene, scene === self.desktopScene else { return }
+                    self.background()
+                })
+            }
+            observers.append(NotificationCenter.default.addObserver(forName: UIScene.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] event in
+                guard let self, let scene = event.object as? UIWindowScene, scene === self.desktopScene else { return }
+                self.foreground()
+            })
+        }
         let panel = BoundCompanionPanel(sharing: sharing, state: state, gameID: (owner.game as? Game)?.identifier ?? "", editingChanged: { [weak self] in self?.notesEditing($0) })
         let host = UIHostingController(rootView: panel)
         // The coordinator already positions the overlay inside the game viewport.
@@ -133,6 +150,7 @@ final class BoundCompanionCoordinator {
         overlay.accessibilityIdentifier = "bound.companion-container"
         overlay.yieldsTouch = { [weak self, weak overlay] point in
             guard let self, let owner = self.owner, let overlay, !self.isEditingNotes else { return false }
+            if self.usesDesktopControls && owner.controllerView.isHidden { return false }
             let local = owner.controllerView.convert(point, from: overlay)
             return owner.controllerView.controlHitFrames.contains { $0.contains(local) }
         }
@@ -143,6 +161,17 @@ final class BoundCompanionCoordinator {
             self?.cyclePanels()
         }
         owner.view.addSubview(controls); self.controls = controls
+        if usesDesktopControls {
+            let desktop = BoundDesktopCompanionBar()
+            desktop.selectPanel = { [weak self] in self?.selectPanel($0) }
+            desktop.openMenu = { [weak self, weak owner] in
+                guard let self, let owner, owner.presentedViewController == nil else { return }
+                owner.view.endEditing(true); self.cancelInteractions()
+                owner.gameViewController(owner, handleMenuInputFrom: owner.controllerView)
+            }
+            desktop.changePiP = { [weak self] action in self?.performDesktopPiPAction(action) }
+            owner.view.addSubview(desktop); desktopControls = desktop
+        }
         sharing.$joined.combineLatest(sharing.$active).sink { [weak self] joined, active in
             self?.tap.setEnabled(joined && active)
         }.store(in: &subscriptions)
@@ -188,6 +217,7 @@ final class BoundCompanionCoordinator {
     }
     func layout(in bounds: CGRect, safeArea: UIEdgeInsets, controllerSize: CGSize) -> CGRect? {
         guard let owner else { return nil }
+        if usesDesktopControls, let scene = owner.view.window?.windowScene { desktopScene = scene }
         let screenLayout = BoundAppearancePreferences().screenLayout
         if previousScreenLayout != screenLayout { previousScreenLayout = screenLayout; cancelInteractions() }
         let landscape = bounds.width > bounds.height
@@ -202,13 +232,14 @@ final class BoundCompanionCoordinator {
             owner.gameScreenLayoutBounds = horizontal
             return bounds
         }
-        let geometry = BoundPortraitScreenGeometry(bounds: bounds, safeTop: safeArea.top,
+        let companionTop = safeArea.top + (usesDesktopControls ? 52 : 0)
+        let geometry = BoundPortraitScreenGeometry(bounds: bounds, safeTop: companionTop,
             controllerSize: controllerSize, gameAspect: owner.emulatorCore?.preferredRenderingSize ?? CGSize(width: 3, height: 2))
         overlay?.frame = geometry.friend
         if state.content != .friend { overlay?.frame = CGRect(x: bounds.minX, y: geometry.friend.minY, width: bounds.width, height: geometry.friend.height) }
         if state.content == .types {
             overlay?.frame = BoundTypeChartGeometry.portraitViewport(bounds: bounds, gameFrame: geometry.game)
-            if state.chartTopInset != safeArea.top { state.chartTopInset = safeArea.top }
+            if state.chartTopInset != companionTop { state.chartTopInset = companionTop }
         }
         if isEditingNotes {
             overlay?.frame.size.height = max(geometry.friend.height, min(220, bounds.height - keyboardHeight - geometry.friend.minY - 8))
@@ -227,6 +258,7 @@ final class BoundCompanionCoordinator {
         }
         sharing.setRemotePresentationEnabled(state.content == .friend && overlay?.isHidden == false)
         if let controls { owner.view.bringSubviewToFront(controls) }
+        if let desktopControls { owner.view.bringSubviewToFront(desktopControls) }
     }
     /// One final placement, using the settled native viewport and actual hit regions.
     private func layoutFloatingPanel() {
@@ -234,8 +266,9 @@ final class BoundCompanionCoordinator {
         let game = owner.gameView.convert(owner.gameView.bounds, to: owner.view)
         let viewport = game.intersection(owner.view.bounds.inset(by: owner.view.safeAreaInsets))
         guard !viewport.isNull, viewport.width > 0, viewport.height > 0 else { overlay.isHidden = true; return }
-        var occupied = owner.controllerView.controlHitFrames.map { owner.controllerView.convert($0, to: owner.view) }
+        var occupied = usesDesktopControls && owner.controllerView.isHidden ? [] : owner.controllerView.controlHitFrames.map { owner.controllerView.convert($0, to: owner.view) }
         if !controls.isHidden { occupied.append(controls.frame) }
+        if let desktopControls { occupied.append(desktopControls.frame) }
         #if DEBUG && targetEnvironment(simulator)
         owner.gameView.accessibilityValue = "pip-hit-obstacles=" + occupied.map { rect in
             let screen = owner.view.convert(rect, to: nil)
@@ -254,7 +287,8 @@ final class BoundCompanionCoordinator {
                            width: layout.size.width, height: layout.size.height)
         if isEditingNotes {
             let available = owner.view.bounds.inset(by: owner.view.safeAreaInsets)
-            let top = available.minY + (state.landscape ? 4 : 48)
+            let top = max(available.minY + (state.landscape ? 4 : 48),
+                          desktopControls.map { $0.frame.maxY + 8 } ?? available.minY)
             panel = CGRect(x: available.midX - min(400, available.width) / 2, y: top,
                            width: min(400, available.width),
                            height: max(100, min(230, owner.view.bounds.height - keyboardHeight - top - 8)))
@@ -266,6 +300,12 @@ final class BoundCompanionCoordinator {
         owner.view.bringSubviewToFront(overlay)
     }
     private func layoutCycleButton(bounds: CGRect, safeArea: UIEdgeInsets) {
+        if let desktopControls {
+            controls?.isHidden = true
+            desktopControls.frame = BoundDesktopCompanionLayout.toolbar(in: bounds.inset(by: safeArea))
+            desktopControls.configure(state: state, floating: state.landscape || BoundAppearancePreferences().screenLayout == .delta, editingNotes: isEditingNotes)
+            return
+        }
         guard let owner, let controls, let skin = owner.controllerView.controllerSkin,
               let traits = owner.controllerView.controllerSkinTraits,
               let menu = skin.items(for: traits)?.first(where: { $0.inputs.allInputs.contains(where: { $0.stringValue == "menu" }) }) else { controls?.isHidden = true; return }
@@ -344,6 +384,23 @@ final class BoundCompanionCoordinator {
         if !state.hidden { state.selected = (state.selected + 1) % 3 }
         state.hidden = false; state.refresh()
     }
+    func selectPanel(_ selected: Int) {
+        guard (0...2).contains(selected) else { return }
+        owner?.view.endEditing(true); cancelInteractions()
+        state.selected = selected; state.hidden = false; state.refresh()
+    }
+    func performDesktopPiPAction(_ action: BoundDesktopPiPAction) {
+        guard usesDesktopControls, !isEditingNotes,
+              state.landscape || BoundAppearancePreferences().screenLayout == .delta else { return }
+        cancelInteractions()
+        switch action {
+        case .toggleVisibility: state.hidden.toggle()
+        case .corner(let corner): state.preferences.setCorner(corner, for: state.content); state.hidden = false
+        case .scale(let scale): state.preferences.setScale(scale, for: state.content); state.hidden = false
+        case .opacity(let opacity): state.preferences.setOpacity(opacity, for: state.content); state.hidden = false
+        }
+        state.refresh()
+    }
     var allowsOpacityGesture: Bool { state.landscape && state.content != .types && !isEditingNotes }
     private func companionBaseSize(width: CGFloat) -> CGSize {
         let image = state.landscape && state.content == .types ? UIImage(named: "PokemonTypeChart")?.size : nil
@@ -368,7 +425,7 @@ final class BoundCompanionCoordinator {
             target = view.superview
         }
         let local = touch.location(in: owner.controllerView)
-        if owner.controllerView.controlHitFrames.contains(where: { $0.contains(local) }) { return false }
+        if !(usesDesktopControls && owner.controllerView.isHidden), owner.controllerView.controlHitFrames.contains(where: { $0.contains(local) }) { return false }
         return true
     }
     private func move(_ phase: UIGestureRecognizer.State, offset: CGSize, endX: CGFloat) {
@@ -501,7 +558,11 @@ private struct BoundPiPSettings: View {
                     } else { Text("No emulation package is active.") }
                 }
                 Section("Picture in picture") {
-                    Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to restore it. Portrait Types zooms and pans its chart content.")
+                    if ProcessInfo.processInfo.isiOSAppOnMac {
+                        Text("Use the companion toolbar or Command–1, Command–2 and Command–3 to select Friends, Notes and Types. The PiP menu changes corner, size and opacity with a mouse or trackpad. Command–Shift–P hides or restores a floating panel. Use Menu for saves, Friends and Bound settings.")
+                    } else {
+                        Text("In landscape, drag a panel with one finger to move it, or pinch on it with two fingers to resize. Slide two fingers vertically in the center of the game to change Friend or Notes opacity. Types stays opaque. Swipe a panel to an edge to hide; tap the companion button to restore it. Portrait Types zooms and pans its chart content.")
+                    }
                     ForEach([BoundPiPContent.friend, .notes], id: \.rawValue) { content in
                         VStack(alignment: .leading) {
                             Text("\(content.rawValue.capitalized) transparency: \(Int(state.preferences.transparency(for: content) * 100))%")
@@ -700,5 +761,72 @@ private struct BoundFriendsSheet: View {
             else { onboarding.close() }
         }
         .onDisappear { onboarding.close(); closed() }
+    }
+}
+
+
+/// Pointer controls for Delta's iPad binary running on Apple silicon. No Catalyst UI.
+enum BoundDesktopPiPAction {
+    case toggleVisibility
+    case corner(BoundPiPCorner)
+    case scale(Double)
+    case opacity(Double)
+}
+
+@MainActor
+final class BoundDesktopCompanionBar: UIVisualEffectView {
+    var selectPanel: ((Int) -> Void)?
+    var openMenu: (() -> Void)?
+    var changePiP: ((BoundDesktopPiPAction) -> Void)?
+    private let panels = UISegmentedControl(items: ["Friends", "Notes", "Types"])
+    private let menuButton = UIButton(type: .system)
+    private let pipButton = UIButton(type: .system)
+    private let stack = UIStackView()
+
+    init() {
+        super.init(effect: UIBlurEffect(style: .systemChromeMaterial))
+        accessibilityIdentifier = "bound.desktop-toolbar"
+        layer.cornerRadius = 12; clipsToBounds = true
+        menuButton.setImage(UIImage(systemName: "line.3.horizontal"), for: .normal)
+        menuButton.accessibilityLabel = "Game menu"
+        menuButton.accessibilityIdentifier = "bound.desktop-menu"
+        menuButton.addAction(UIAction { [weak self] _ in self?.openMenu?() }, for: .touchUpInside)
+        panels.accessibilityIdentifier = "bound.desktop-panels"
+        panels.addAction(UIAction { [weak self] _ in
+            guard let self else { return }; self.selectPanel?(self.panels.selectedSegmentIndex)
+        }, for: .valueChanged)
+        pipButton.setImage(UIImage(systemName: "pip"), for: .normal)
+        pipButton.accessibilityLabel = "Picture in picture options"
+        pipButton.accessibilityIdentifier = "bound.desktop-pip"
+        pipButton.showsMenuAsPrimaryAction = true
+        stack.axis = .horizontal; stack.alignment = .center; stack.spacing = 8
+        [menuButton, panels, pipButton].forEach(stack.addArrangedSubview)
+        [menuButton, pipButton].forEach { $0.widthAnchor.constraint(equalToConstant: 36).isActive = true }
+        contentView.addSubview(stack)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layoutSubviews() {
+        super.layoutSubviews(); stack.frame = contentView.bounds.insetBy(dx: 8, dy: 4)
+    }
+    func configure(state: BoundCompanionState, floating: Bool, editingNotes: Bool) {
+        panels.selectedSegmentIndex = state.selected
+        pipButton.isEnabled = floating && !editingNotes
+        let action: (String, BoundDesktopPiPAction, Bool) -> UIAction = { [weak self] title, command, selected in
+            UIAction(title: title, state: selected ? .on : .off) { [weak self] _ in self?.changePiP?(command) }
+        }
+        let corners: [(String, BoundPiPCorner)] = [("Top left", .topLeft), ("Top right", .topRight), ("Bottom left", .bottomLeft), ("Bottom right", .bottomRight)]
+        let corner = UIMenu(title: "Corner", children: corners.map {
+            action($0.0, .corner($0.1), state.preferences.corner(for: state.content) == $0.1)
+        })
+        let size = UIMenu(title: "Size", children: [0.65, 0.85, 1, 1.2, 1.4].map {
+            action("\(Int($0 * 100))%", .scale($0), abs(state.preferences.scale(for: state.content) - $0) < 0.001)
+        })
+        var items: [UIMenuElement] = [action(state.hidden ? "Show panel" : "Hide panel", .toggleVisibility, false), corner, size]
+        if state.content != .types {
+            items.append(UIMenu(title: "Opacity", children: [0.25, 0.5, 0.75, 1].map {
+                action("\(Int($0 * 100))%", .opacity($0), abs(state.preferences.opacity(for: state.content) - $0) < 0.001)
+            }))
+        }
+        pipButton.menu = UIMenu(children: items)
     }
 }

@@ -2,9 +2,78 @@ import XCTest
 import UIKit
 import SwiftUI
 @testable import Delta
+@testable import DeltaCore
 
 @MainActor
 final class CompanionCycleButtonTests: XCTestCase {
+    func testDesktopCommandsSelectRestoreAndPersistIndependentPiPPreferences() throws {
+        let suite = "BoundDesktop." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = BoundPiPPreferences(defaults: defaults)
+        let state = BoundCompanionState(preferences: preferences)
+        let coordinator = BoundCompanionCoordinator(state: state, usesDesktopControls: true)
+        state.landscape = true
+        coordinator.performDesktopPiPAction(.corner(.bottomLeft))
+        coordinator.performDesktopPiPAction(.scale(1.4))
+        coordinator.performDesktopPiPAction(.opacity(0.5))
+        coordinator.performDesktopPiPAction(.toggleVisibility)
+        XCTAssertTrue(state.hidden)
+        coordinator.selectPanel(1)
+        XCTAssertEqual(state.content, .notes); XCTAssertFalse(state.hidden)
+        XCTAssertEqual(preferences.scale(for: .notes), 1)
+        coordinator.selectPanel(2)
+        coordinator.performDesktopPiPAction(.opacity(0.25))
+        XCTAssertEqual(preferences.opacity(for: .types), 1)
+        coordinator.selectPanel(0)
+        XCTAssertEqual(preferences.corner(for: .friend), .bottomLeft)
+        XCTAssertEqual(preferences.scale(for: .friend), 1.4)
+        XCTAssertEqual(preferences.opacity(for: .friend), 0.5)
+        coordinator.selectPanel(999)
+        XCTAssertEqual(state.content, .friend)
+    }
+
+    func testDesktopToolbarWorksWithoutAControllerSkinAndDisablesNonfloatingPiP() {
+        let state = BoundCompanionState()
+        let toolbar = BoundDesktopCompanionBar()
+        toolbar.frame = BoundDesktopCompanionLayout.toolbar(in: CGRect(x: 0, y: 0, width: 320, height: 568))
+        toolbar.configure(state: state, floating: false, editingNotes: false)
+        toolbar.layoutIfNeeded()
+        let stack = toolbar.contentView.subviews.compactMap { $0 as? UIStackView }.first!
+        let buttons = stack.arrangedSubviews.compactMap { $0 as? UIButton }
+        XCTAssertTrue(buttons[0].isEnabled)
+        XCTAssertFalse(buttons[1].isEnabled)
+        let panels = stack.arrangedSubviews.compactMap { $0 as? UISegmentedControl }.first!
+        var chosen: Int?, opened = 0
+        toolbar.selectPanel = { chosen = $0 }; toolbar.openMenu = { opened += 1 }
+        panels.selectedSegmentIndex = 2; panels.sendActions(for: .valueChanged)
+        buttons[0].sendActions(for: .touchUpInside)
+        XCTAssertEqual(chosen, 2); XCTAssertEqual(opened, 1)
+        toolbar.configure(state: state, floating: true, editingNotes: false)
+        XCTAssertTrue(buttons[1].isEnabled)
+        toolbar.configure(state: state, floating: true, editingNotes: true)
+        XCTAssertFalse(buttons[1].isEnabled)
+    }
+
+    func testMacCommandShortcutCannotSendMappedGameInputOrLeaveAHeldKey() {
+        let keyboard = KeyboardGameController(keyboard: nil)
+        keyboard.processKey(.init("1"), isActive: true, commandHeld: false, isRunningOnMac: true)
+        XCTAssertEqual(keyboard.activatedInputs.count, 1)
+        keyboard.processKey(.command, isActive: true, commandHeld: true, isRunningOnMac: true)
+        XCTAssertTrue(keyboard.activatedInputs.isEmpty)
+        keyboard.processKey(.init("2"), isActive: true, commandHeld: true, isRunningOnMac: true)
+        keyboard.processKey(.init("1"), isActive: false, commandHeld: true, isRunningOnMac: true)
+        keyboard.processKey(.command, isActive: false, commandHeld: false, isRunningOnMac: true)
+        XCTAssertTrue(keyboard.activatedInputs.isEmpty)
+        keyboard.processKey(.init("a"), isActive: true, commandHeld: false, isRunningOnMac: true)
+        XCTAssertEqual(keyboard.activatedInputs.count, 1)
+        keyboard.processKey(.init("a"), isActive: false, commandHeld: false, isRunningOnMac: true)
+        XCTAssertTrue(keyboard.activatedInputs.isEmpty)
+        keyboard.processKey(.command, isActive: true, commandHeld: true, isRunningOnMac: false)
+        XCTAssertEqual(keyboard.activatedInputs.count, 1, "iPhone/iPad keep upstream mapping behavior")
+        keyboard.processKey(.command, isActive: false, commandHeld: false, isRunningOnMac: false)
+    }
+
     func testPortraitMirrorKeepsDefaultAndAvoidsMovedInput() throws {
         let canvas = CGRect(x: 0, y: 0, width: 390, height: 800)
         let menu = CGRect(x: 20, y: 740, width: 20, height: 20)

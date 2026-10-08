@@ -83,6 +83,10 @@
     {
       "path": "PrototypePatches/dependency-privacy.patch",
       "purpose": "Bundle source-audited elapsed-time API declaration in DeltaCore.framework; no runtime changes or upstream pin change."
+    },
+    {
+      "path": "PrototypePatches/deltacore-mac-command-shortcuts.patch",
+      "purpose": "On the existing pinned snapshot, keep Command shortcuts out of modern keyboard emulation when the iPad app runs on Apple silicon Mac; iOS device behavior and upstream revision unchanged."
     }
   ],
   "sha256": {
@@ -120,7 +124,7 @@
     "Cores/DeltaCore/DeltaCore/Extensions/UIWindowScene+StageManager.swift": "b9c12dae93beac409b02ec1390a6827fc40453a8895ee4dbe78f8c5caf4d4c09",
     "Cores/DeltaCore/DeltaCore/Filters/FilterChain.swift": "d765cff81f05721a5b38d108c8535be16f90b4dd668b019d72bd8a945e9e5ceb",
     "Cores/DeltaCore/DeltaCore/Game Controllers/ExternalGameControllerManager.swift": "2568b5e97cd9be566ad91bf7ea0d4a29226616214fbba81f23aa419784411cbf",
-    "Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift": "5930686baeac60872e791164ad2cab43047242c98986c12dad153ae1e5e45da7",
+    "Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardGameController.swift": "eea2857f5ab19c87dd94a0da0ab9a5302481a24b458168b52ffc2ed9821ecfeb",
     "Cores/DeltaCore/DeltaCore/Game Controllers/Keyboard/KeyboardResponder.swift": "be22c3a4aed7d4f239d65ae48b807931f46e3db90b4345773267c89dcf4152d0",
     "Cores/DeltaCore/DeltaCore/Game Controllers/MFi/MFiGameController.swift": "ad15072ff9bf5ccc4fab2df1083d92758445b820c8d82ae034bef0d96785dad8",
     "Cores/DeltaCore/DeltaCore/Model/Cheat.swift": "692ec3c17eeb03aeab77dc8bda1c7a7175092446873cf08767ba8b16d9235704",

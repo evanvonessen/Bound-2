@@ -20,6 +20,10 @@ Import a supported ROM through the Library **+** button. The Files picker accept
 
 Friends uses the existing Bound backend and Agora adapter. No new account or service is provisioned. Physical gameplay and real Internet friend-sharing still require device validation; local automated tests use original generated cartridges and offline transport.
 
+## Run on an Apple silicon Mac
+
+Select **Bound** and **My Mac (Designed for iPad)** in Xcode. Bound uses the existing iPad app on Apple silicon, with a Mac-only companion toolbar, Command–1/2/3 panel shortcuts, and pointer-accessible PiP options. See [Mac compatibility](Docs/MAC-COMPATIBILITY.md) for setup, tested behavior and remaining validation limits.
+
 ## Upgrading an older checkout
 
 If your checkout predates commit `03c3cc9`, its dependency submodules can conflict with the new tracked source snapshots during `git pull`. Keep that checkout and any edits intact, and clone alongside it instead:

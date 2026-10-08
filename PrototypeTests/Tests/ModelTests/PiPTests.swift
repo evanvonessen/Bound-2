@@ -3,6 +3,25 @@ import CoreGraphics
 import XCTest
 @testable import Models
 final class PiPTests: XCTestCase {
+    func testDesktopToolbarAndFloatingPanelsStayWithinResizedWindows() {
+        for size in [CGSize(width: 320, height: 568), CGSize(width: 768, height: 1024),
+                     CGSize(width: 1024, height: 768), CGSize(width: 1920, height: 1080)] {
+            let viewport = CGRect(origin: CGPoint(x: 0, y: 28), size: size)
+            let toolbar = BoundDesktopCompanionLayout.toolbar(in: viewport)
+            XCTAssertTrue(viewport.contains(toolbar))
+            XCTAssertGreaterThanOrEqual(toolbar.width, 304)
+            for scale: CGFloat in [0.65, 1, 1.4] {
+                let layout = BoundPiPLayout(viewport: viewport, baseSize: CGSize(width: size.width * 0.36, height: size.width * 0.24), scale: scale, occupied: [toolbar])
+                for corner in BoundPiPCorner.allCases {
+                    let center = layout.center(corner)
+                    let panel = CGRect(x: center.x - layout.size.width / 2, y: center.y - layout.size.height / 2, width: layout.size.width, height: layout.size.height)
+                    XCTAssertTrue(viewport.contains(panel))
+                    XCTAssertFalse(panel.intersects(toolbar))
+                }
+            }
+        }
+    }
+
     @MainActor func testLegacyCornerMigratesPerPanelAndTypesIgnoresLegacyTransparency() throws {
         let suite = "BoundPiPIndependent." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
