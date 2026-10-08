@@ -44,6 +44,11 @@ This verifies dashboard access, not the cause or resolution of the connector's
 confirmation loop. The project overview displayed **Unhealthy**; inspect its
 service health before deployment and stop if database/function service errors
 prevent verification. No editor content, permissions or live resources were changed.
+Follow-up at **2026-10-08 08:13:24 UTC**: supported project metadata returned
+`ACTIVE_HEALTHY`; the fully loaded Safari overview showed Healthy, 35 requests
+with 100% success in its last-hour view, and zero service warnings/errors.
+The earlier unhealthy indication cleared without intervention. No affected
+service or root cause was identified; this is not proof of deployed app behavior.
 
 `approved-deployment.sql` combines the same three reviewed files into one
 transaction with the original live-definition fingerprint guard. It openly

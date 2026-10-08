@@ -70,6 +70,9 @@ Ignored logs: `.build/account-validation/final-models.log`, `final-server.log`,
    confirmation. The overview reports **Unhealthy**, whose cause is unverified.
    A guarded user-run SQL handoff and exact two-function update/verification
    sequence are in the moderation README. No browser deployment was performed.
+   At 08:13:24 UTC, follow-up metadata returned `ACTIVE_HEALTHY` and Safari showed
+   Healthy with zero service warnings/errors. The earlier status cleared without
+   intervention; no affected service or root cause was identified.
 2. **New icon and four artwork files: HTTP 403.** All five new Library references
    were tried through supported VM materialization and stopped at denial.
    No supplied pixels could be inspected or added to GitHub. Existing icon and
