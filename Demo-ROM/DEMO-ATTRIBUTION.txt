@@ -1,0 +1,30 @@
+Tobu Tobu Girl Deluxe — Tangram Games
+Original soundtrack by potato-tan.
+
+Official download: https://tangramgames.itch.io/tobu-tobu-girl-deluxe
+Creator website: https://tangramgames.dk/tobutobugirldx/
+Creator source and asset license declaration:
+https://github.com/SimonLarsen/tobutobugirl-dx/blob/master/README.md
+Code: MIT; all images, text, sound and music: CC BY 4.0.
+https://creativecommons.org/licenses/by/4.0/
+
+This license permits commercial demos, footage and screenshots with attribution.
+Keep both license files if redistributing the ROM. Do not imply creator endorsement.
+
+Suggested visible credit for footage/screenshot description (also place a short
+credit on the image or video when accompanying description will not be visible):
+“Tobu Tobu Girl Deluxe by Tangram Games; music by potato-tan.
+Assets CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+https://tangramgames.dk/tobutobugirldx/ — Gameplay shown in Bound.”
+If cropped/resized or otherwise edited, add an accurate changes statement such as
+“Screenshot cropped and resized; game assets unmodified.”
+
+Use Files/+ in Bound to import tobudx.gb. It is a dual GB/GBC ROM; .gb is the
+creator's filename. The color-capable header and cartridge header checksum were
+verified without launching the game. Actual gameplay/demo timing remains to test.
+A: dash. B: boost/flap. Direction buttons steer; bounce upward on enemies.
+See the creator page for controls and instructions. No installer or software added.
+
+Official file: tobudx.gb, 262144 bytes (256 KiB).
+SHA-256: 0a0e8018dbbc8d7f8cd99f05e7cdc7b4cc9e358ecfe9377ebfb2291a84c6e310
+Downloaded via the creator's free itch.io file upload 1739588, game 400060.
